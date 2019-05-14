@@ -1,5 +1,7 @@
 import numpy as np
 
+from bisectionUtils import arrayToCSV
+
 ######################################################################
 # Author: 	Ian Ludden
 # Date: 	02 May 2019
@@ -51,6 +53,6 @@ for n in range(2,nUB):
 thresholds = t[1:,1:]
 optAseats = K[1:,1:]
 
-np.savetxt('thresholds_1_to_{0}.csv'.format(nUB-1), thresholds, fmt='%.1f', delimiter=',')
-np.savetxt('optAseats_1_to_{0}.csv'.format(nUB-1), optAseats, fmt='%.1f', delimiter=',')
+arrayToCSV(thresholds, 'thresholds_1_to_{0}.csv'.format(nUB-1))
+arrayToCSV(optAseats, 'optAseats_1_to_{0}.csv'.format(nUB-1))
 
