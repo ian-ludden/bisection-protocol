@@ -1,5 +1,7 @@
 import csv
 import math
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 from pprint import pprint
 import sys
@@ -15,21 +17,13 @@ from bisectionUtils import csvToArray
 ######################################################################
 DEBUG = False
 
-if len(sys.argv) >= 3:
-	thresholdsFilename = str(sys.argv[1])
-	optAseatsFilename = str(sys.argv[2])
-else: # Load default files for testing purposes
-	thresholdsFilename = 'thresholds_1_to_32.csv'
-	optAseatsFilename = 'optAseats_1_to_32.csv'
-
-# n = 0 # TODO: n, s as parameters?
-# s = 0
+# Load default files with thresholds and opt seats.
+thresholdsFilename = 'thresholds_1_to_32.csv'
+optAseatsFilename = 'optAseats_1_to_32.csv'
 
 # Read in tables of t_{n,j} and K_{n,j} as defined in bisectionDP.py.
 t = csvToArray(thresholdsFilename)
 K = csvToArray(optAseatsFilename)
-
-# TODO: sweep s from 0 to n with some specified resolution?
 
 def computeDistrictPlan(n, s, A):
 	"""Recursively compute the vote-shares of all districts.
@@ -49,7 +43,7 @@ def computeDistrictPlan(n, s, A):
 
 	# Error checks.
 	if s > n:
-		raise ValueError('Cannot have s > n.')
+		raise ValueError('n={0}, s={1:.5f}. Cannot have s > n.'.format(n, s))
 
 	# 0. Base case.
 	if n == 1:
@@ -93,13 +87,19 @@ def computeDistrictPlan(n, s, A):
 	s0 = s0 + leftovers / 2
 	s1 = s1 + leftovers / 2
 	
-	# ... Unless, of course, an even split would overfill one side.
+	# ... Unless, of course, an even split makes s0 or s1 invalid.
 	if s0 > P0:
 		s1 = s1 + (s0 - P0)
 		s0 = P0
 	if s1 > P1:
 		s0 = s0 + (s1 - P1)
 		s1 = P1
+	if s0 < 0:
+		s1 = s1 + s0
+		s0 = 0
+	if s1 < 0:
+		s0 = s0 + s1
+		s1 = 0
 
 	# 4. Recurse on each side.
 	if DEBUG:
@@ -126,63 +126,54 @@ def calcEfficiencyGap(voteShares):
 
 	return (wastedVotes1 - wastedVotes2) / len(voteShares)
 
+if __name__ == '__main__':
+	if len(sys.argv) < 2:
+		exit('Not enough arguments.')
+	n = int(sys.argv[1])
 
-# def calcWastedVotes(n, s, A):
-# 	"""Recursively compute how many votes are wasted for each player.
+	# Increase to make plot more accurate
+	resolution = 53
+	
+	# Range of vote-share values is slightly offset to avoid 
+	# ambiguities of landing exactly on a threshold
+	sSweep = np.linspace(0.101, n-0.099, resolution*n)
+	A = 1
 
-# 	Keyword arguments:
-# 	n -- the number of districts
-# 	s -- the vote-share of the cutting player
-# 	A -- the index of the cutting player (1 or 2)
+	effGaps = np.zeros(sSweep.shape)
+	for i in range(len(sSweep)):
+		try:
+			voteShares = computeDistrictPlan(n, sSweep[i], A)
+		except ValueError:
+			print('Error computing district plan for n={0}, s={1:.5f}.'.format(n, sSweep[i]))
+			raise
+		effGaps[i] = calcEfficiencyGap(voteShares)
 
-# 	Returns [wasted votes Player 1, wasted votes Player 2]
-# 	"""
-# 	B = 3 - A
+	normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
+	effGapsPercent = (np.concatenate(([-0.5], effGaps, [0.5]))) * 100.0
+	titleText = 'Efficiency Gaps for n = {0}'.format(n)
 
-# 	# Compute sizes of 'left' (P0) and 'right' (P1) sides of cut. 
-# 	P0 = floor(n/2)
-# 	P1 = ceil(n/2)
+	fig, axarr = plt.subplots(nrows=2, sharex=True)
+	fig.suptitle(titleText)
 
-# 	# Error checks.
-# 	if s > n:
-# 		raise ValueError('Cannot have s > n.')
+	# Plot Seat-share and Efficiency Gap in separate plots
+	# (since y-axis is different for each)
+	yThresholds = np.array(range(n+1))
+	yThresholds = np.repeat(yThresholds, 2)
 
-# 	# 0. Base case.
-# 	if n == 1:
-# 		if s >= 0.5:
-# 				wastedVotes = [s - 0.5, 1 - s]
-# 			else:
-# 				wastedVotes = [s, 1 - s - 0.5]
-# 		if A == 2:
-# 			list.reverse(wastedVotes)
-# 		return wastedVotes
+	xThresholds = np.repeat(t[n,:n+1], 2)
+	xThresholds = xThresholds[2:]
+	xThresholds = np.insert(xThresholds, 0, 0)
+	xThresholds = np.append(xThresholds, n)
 
+	axarr[0].plot(xThresholds/n, yThresholds/n)
+	axarr[0].set(ylabel='Seat-share')
+	axarr[1].plot(normalizedS, effGapsPercent)
+	axarr[1].set(xlabel='Fractional Vote-share', ylabel='Efficency Gap (%)')
+	axarr[0].grid()
+	axarr[1].grid()
+	fig.savefig('plotEffGapsAndSeatShare_{0}_res{1}.png'.format(n,resolution))
+	plt.show()
 
-# 	# 1. Determine how many seats Player A will win (j).
-# 	j = 0
-# 	for i in range(n+1):
-# 		if t[n,i] <= s:
-# 			j = i
-# 		else:
-# 			break
-
-# 	# 2. Find # seats Player A will win from P0.
-# 	seatsFromP0 = K[n,j]
-
-# 	# 3. Compute Player B's vote-shares for each side.
-# 	s0 = 0
-# 	if seatsFromP0 > 0:
-# 		s0 = t[P0, P0 - seatsFromP0 + 1]
-
-# 	s1 = 0
-# 	if seatsFromP1 > 0:
-# 		s1 = t[P1, P1 - seatsFromP1 + 1]
-
-# 	# 4. Recurse on each side.
-# 	[w01, w02] = calcWastedVotes(P0, s0, B)
-# 	[w11, w12] = calcWastedVotes(P1, s1, B)
-
-# 	return [w01 + w11, w02 + w12]
 
 
 

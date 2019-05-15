@@ -60,5 +60,13 @@ class TestEffGapMethods(unittest.TestCase):
 		trueVoteShares = [0.3, 0.8, 0.05, 0.05]
 		self.assertTrue(listsMatch(voteShares, trueVoteShares))
 
+		# Seven districts
+		n = 7
+		s = 6.51505
+		A = 1
+		voteShares = computeDistrictPlan(n, s, A)
+		trueVoteShares = [1.0, 1.0, 1.0, 0.8787625, 0.8787625, 0.8787625, 0.8787625]
+		self.assertTrue(listsMatch(voteShares, trueVoteShares))
+
 if __name__ == '__main__':
 	unittest.main()
