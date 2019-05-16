@@ -6,7 +6,7 @@ import numpy as np
 from pprint import pprint
 import sys
 
-from bisectionUtils import csvToArray
+from bisectionUtils import calcEfficiencyGap, csvToArray
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -111,21 +111,6 @@ def computeDistrictPlan(n, s, A):
 	return voteShares0 + voteShares1
 
 
-def calcEfficiencyGap(voteShares):
-	"""Computes the efficiency gap of a districting plan, 
-	as given by a list of Player 1's vote-shares in each district.
-	"""
-	wastedVotes1 = 0
-	wastedVotes2 = 0
-
-	for s in voteShares:
-		w1 = s - 0.5 if s >= 0.5 else s
-		w2 = (1 - s) - 0.5 if s < 0.5 else 1 - s
-		wastedVotes1 = wastedVotes1 + w1
-		wastedVotes2 = wastedVotes2 + w2
-
-	return (wastedVotes1 - wastedVotes2) / len(voteShares)
-
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
 		exit('Not enough arguments.')
@@ -171,7 +156,7 @@ if __name__ == '__main__':
 	axarr[1].set(xlabel='Fractional Vote-share', ylabel='Efficency Gap (%)')
 	axarr[0].grid()
 	axarr[1].grid()
-	fig.savefig('plotEffGapsAndSeatShare_{0}_res{1}.png'.format(n,resolution))
+	fig.savefig('plotEffGapsAndSeatShareBisection_{0}_res{1}.png'.format(n,resolution))
 	plt.show()
 
 

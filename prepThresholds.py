@@ -26,4 +26,8 @@ with open(filename, 'r') as csvFile:
 			sys.stdout.write('+HeavisideTheta[x-{0}/{1}]'.format(threshold, n))
 		sys.stdout.write(')/{0}\n'.format(n))
 
-		sys.stdout.write('Plot[{{{{{0}g[x/{0}]}},{0} - {0} g[1-x/{0}] }},{{x,0,{0}}},Exclusions->{{False}}]\n\n'.format(n))
+		# Print code for plotting g(x) with 1-g(1-x)
+		sys.stdout.write('Plot[{{{{{0}g[x/{0}]}},{0} - {0} g[1-x/{0}] }},{{x,0,{0}}},Exclusions->{{False}}]\n'.format(n))
+
+		# Print code for integrating to find the partisan asymmetry
+		sys.stdout.write('NIntegrate[Abs[g[x] - (1 - g[1 - x])], {x, 0, 1}]\n\n')

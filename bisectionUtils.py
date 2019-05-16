@@ -47,3 +47,18 @@ def listsMatch(l1, l2):
 			return False
 
 	return True
+
+def calcEfficiencyGap(voteShares):
+	"""Computes the efficiency gap of a districting plan, 
+	as given by a list of Player 1's vote-shares in each district.
+	"""
+	wastedVotes1 = 0
+	wastedVotes2 = 0
+
+	for s in voteShares:
+		w1 = s - 0.5 if s >= 0.5 else s
+		w2 = (1 - s) - 0.5 if s < 0.5 else 1 - s
+		wastedVotes1 = wastedVotes1 + w1
+		wastedVotes2 = wastedVotes2 + w2
+
+	return (wastedVotes1 - wastedVotes2) / len(voteShares)
