@@ -62,3 +62,41 @@ def calcEfficiencyGap(voteShares):
 		wastedVotes2 = wastedVotes2 + w2
 
 	return (wastedVotes1 - wastedVotes2) / len(voteShares)
+
+def calcSainteLagueIndex(voteShares):
+	"""Computes the Sainte-Laguë Index of the districting plan, 
+	given as a list of Player 1's vote-shares in each district.
+
+	Reference: M. Gallagher. "Proportionality, Disproportionality 
+		and Electoral Systems." 1991.
+	"""
+	n = len(voteShares)
+	seatSharePercent1 = sum((x >= 0.5) for x in voteShares) / n
+	voteSharePercent1 = sum(voteShares) / n
+
+	seatSharePercent2 = 1 - seatSharePercent1
+	voteSharePercent2 = 1 - voteSharePercent1
+
+	ssPercent = [seatSharePercent1, seatSharePercent2]
+	vsPercent = [voteSharePercent1, voteSharePercent2]
+
+	return sainteLagueHelper(seatSharesPercent=ssPercent, voteSharesPercent=vsPercent)
+
+def sainteLagueHelper(seatSharesPercent, voteSharesPercent):
+	"""Computes the Sainte-Laguë Index given party seat-shares and 
+	vote-shares as percentages.
+	Reference: M. Gallagher. "Proportionality, Disproportionality 
+		and Electoral Systems." 1991.
+	"""
+	total = 0
+	nPartiesSeats = len(seatSharesPercent)
+	nPartiesVotes = len(voteSharesPercent)
+
+	if nPartiesSeats != nPartiesVotes:
+		raise InputError('Length of seatSharesPercent is {0}, but length of voteSharesPercent is {1}.'.format(nPartiesSeats, nPartiesVotes))
+
+	for i in range(nPartiesSeats):
+		diff = seatSharesPercent[i] - voteSharesPercent[i]
+		total = total + (diff ** 2 / voteSharesPercent[i])
+
+	return total
