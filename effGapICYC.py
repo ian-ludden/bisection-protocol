@@ -29,11 +29,14 @@ def computeDistrictPlan(n, s, A):
 
 	Keyword arguments:
 	n -- the number of districts
-	s -- the total vote-share of the cutting player
+	s -- the total vote-share of Player 1 (always)
 	A -- the index of the cutting player (1 or 2)
 
 	Returns a list of Player 1 vote-shares in each district. 
 	"""
+	if DEBUG:
+		print('computeDistrictPlan({0},{1:.3f},{2})'.format(n, s, A))
+	
 	B = 3 - A
 
 	# Error checks.
@@ -42,28 +45,29 @@ def computeDistrictPlan(n, s, A):
 
 	# 0. Base case.
 	if n == 1:
-		return [s] if A == 1 else [1 - s]
+		return [s]
 
 	# 1. Implement Lemmas 3.4, 3.6 from Pegden et al. (2017).
-	s1 = (s) if (A == 1) else (n - s)
+
+	# Player 1's vote-share in the frozen district.
 	voteShare = 0
 
-	if A == 1 and s1 < n / 2:
+	if A == 1 and s < n / 2:
 		# P2 wins a district in which they are fully packed. 
-		pass # s1 = s1
-	elif A == 2 and s1 >= n / 2:
+		pass # s = s
+	elif A == 2 and s >= n / 2:
 		# Player 1 wins a district in which they are fully packed.
 		voteShare = 1
 	else: 
 		# The stronger player draws n identical districts. 
-		voteShare = s1 / n
+		voteShare = s / n
 
-	s1 = s1 - voteShare
+	s = s - voteShare
 
 	# 2. Recurse.
 	if DEBUG:
-		print('Calling computeDistrictPlan({0}, {1:.5f}, {2})'.format(n - 1, s1, B))
-	otherVoteShares = computeDistrictPlan(n - 1, s1, B)
+		print('Calling computeDistrictPlan({0}, {1:.5f}, {2})'.format(n - 1, s, B))
+	otherVoteShares = computeDistrictPlan(n - 1, s, B)
 
 	return np.insert(otherVoteShares, 0, voteShare)
 
