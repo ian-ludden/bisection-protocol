@@ -13,7 +13,7 @@ from bisectionUtils import calcEfficiencyGap, csvToArray
 # Date: 	16 May 2019
 # 
 # Computes the efficiency gap of district plans resulting from 
-# optimal play of the I-cut-you-choose protocol introducdd by 
+# optimal play of the I-cut-you-freeze protocol introduced by 
 # Pegden et al. (2017). 
 # 
 # Source: https://arxiv.org/abs/1710.08781
@@ -96,9 +96,9 @@ if __name__ == '__main__':
 
 	normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
 	effGapsPercent = (np.concatenate(([-0.5], effGaps, [0.5]))) * 100.0
-	titleText = 'Efficiency Gaps for n = {0}'.format(n)
+	titleText = 'Efficiency Gap vs. Vote-share, n = {0}'.format(n)
 
-	fig, axarr = plt.subplots(nrows=2, sharex=True)
+	fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,8))
 	fig.suptitle(titleText)
 
 	# Plot Seat-share and Efficiency Gap in separate plots
@@ -113,10 +113,14 @@ if __name__ == '__main__':
 
 	axarr[0].plot(xThresholds/n, yThresholds/n)
 	axarr[0].set(ylabel='Seat-share')
+	axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
 	axarr[1].plot(normalizedS, effGapsPercent)
-	axarr[1].set(xlabel='Fractional Vote-share', ylabel='Efficency Gap (%)')
+	axarr[1].set(xlabel='Vote-share', ylabel='Efficency Gap (%)')
+	yticks1 = [-50, -25, -8, 0, 8, 25, 50]
+	axarr[1].set_yticks(yticks1)
 	axarr[0].grid()
 	axarr[1].grid()
-	fig.savefig('plotEffGapsAndSeatShareICYC_{0}_res{1}.png'.format(n,resolution))
+	plt.xticks(np.arange(0, 1.25, step=0.25))
+	fig.savefig('plotEffGapsAndSeatShareICYF_{0}_res{1}.png'.format(n,resolution))
 	plt.show()
 

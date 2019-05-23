@@ -49,9 +49,10 @@ if __name__ == '__main__':
 	# If s = 0 or s = n, then Sainte-Laguë index is 0.
 	sainteLaguesPercent = (np.concatenate(([0], sainteLagues, [0]))) * 100.0
 	
-	titleText = 'I-cut-you-choose Protocol: Seat-Share and Proportionality for n = {0}'.format(n)
+	# titleText = 'I-cut-you-choose Protocol: Seat-Share and Proportionality for n = {0}'.format(n)
+	titleText = ''
 
-	fig, axarr = plt.subplots(nrows=2, sharex=True)
+	fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,8))
 	fig.suptitle(titleText)
 
 	# Plot Seat-share and Sainte-Laguë Index in separate plots
@@ -66,10 +67,12 @@ if __name__ == '__main__':
 
 	axarr[0].plot(xThresholds/n, yThresholds/n)
 	axarr[0].set(ylabel='Seat-share')
+	axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
 	axarr[1].plot(normalizedS, sainteLaguesPercent)
-	axarr[1].set(xlabel='Fractional Vote-share', ylabel='Sainte-Laguë Index (%)')
+	axarr[1].set(xlabel='Vote-share', ylabel='Sainte-Laguë Index (%)')
 	axarr[0].grid()
 	axarr[1].grid()
+	plt.xticks(np.arange(0, 1.25, step=0.25))
 	fig.savefig('plotSLIndexAndSeatShareICYC_{0}_res{1}.png'.format(n,resolution))
 	plt.show()
 
