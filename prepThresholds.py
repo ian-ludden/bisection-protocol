@@ -16,7 +16,7 @@ import csv
 filename = str(sys.argv[1])
 with open(filename, 'r') as csvFile:
 	reader = csv.reader(csvFile)
-	n = 0
+	n = 32
 	for row in reader:
 		sys.stdout.write('g[x_]:=(')
 		n = n + 1

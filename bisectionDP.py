@@ -13,7 +13,7 @@ from bisectionUtils import arrayToCSV
 INIT_VAL = -100
 BIG_VAL = np.iinfo(np.int16).max
 
-nUB = 33
+nUB = 54
 
 # t is the table of thresholds t_{n,j}
 t = INIT_VAL*np.ones((nUB,nUB)) # Initialize to large negative number

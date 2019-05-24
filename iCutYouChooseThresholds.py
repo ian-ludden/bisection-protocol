@@ -38,7 +38,7 @@ def calcThreshold(n, k):
 
 
 # The maximum number of districts
-nUB = 33
+nUB = 54
 
 t = np.zeros((nUB, nUB))
 for i in range(1, nUB):

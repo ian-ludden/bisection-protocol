@@ -19,9 +19,10 @@ from bisectionUtils import calcEfficiencyGap, csvToArray
 # Source: https://arxiv.org/abs/1710.08781
 ######################################################################
 DEBUG = False
+isCompressed = False # Flag for packing constraint
 
 # Load tresholds from default file.
-thresholdsFilename = 'icycThresholds_1_to_32.csv'
+thresholdsFilename = 'icycThresholds_1_to_53.csv'
 t = csvToArray(thresholdsFilename)
 
 def computeDistrictPlan(n, s, A):
@@ -77,6 +78,12 @@ if __name__ == '__main__':
 		exit('Not enough arguments.')
 	n = int(sys.argv[1])
 
+	# If provided, third argument is the packing parameter (and toggles its use).
+	if len(sys.argv) >= 3:
+		isCompressed = True
+		delta = float(sys.argv[2])
+		gamma = 0.5 - delta # Lower bound on vote-share in district
+
 	# Increase to make plot more accurate
 	resolution = 53
 	
@@ -89,14 +96,21 @@ if __name__ == '__main__':
 	for i in range(len(sSweep)):
 		try:
 			voteShares = computeDistrictPlan(n, sSweep[i], A)
+			if isCompressed:
+				for j in range(len(voteShares)):
+					voteShares[j] = voteShares[j] * (1 - 2 * gamma) + gamma
+			effGaps[i] = calcEfficiencyGap(voteShares)
 		except ValueError:
 			print('Error computing district plan for n={0}, s={1:.5f}.'.format(n, sSweep[i]))
 			raise
-		effGaps[i] = calcEfficiencyGap(voteShares)
 
 	normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
+	if isCompressed:
+		normalizedS = normalizedS * (1 - 2 * gamma) + gamma
+
 	effGapsPercent = (np.concatenate(([-0.5], effGaps, [0.5]))) * 100.0
-	titleText = 'Efficiency Gap vs. Vote-share, n = {0}'.format(n)
+	# titleText = 'Efficiency Gap vs. Vote-share, n = {0}'.format(n)
+	titleText = ''
 
 	fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,8))
 	fig.suptitle(titleText)
@@ -121,6 +135,5 @@ if __name__ == '__main__':
 	axarr[0].grid()
 	axarr[1].grid()
 	plt.xticks(np.arange(0, 1.25, step=0.25))
-	fig.savefig('plotEffGapsAndSeatShareICYF_{0}_res{1}.png'.format(n,resolution))
+	# fig.savefig('plotEffGapsAndSeatShareICYF_{0}_res{1}.png'.format(n,resolution))
 	plt.show()
-
