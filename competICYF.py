@@ -6,13 +6,14 @@ import numpy as np
 from pprint import pprint
 import sys
 
-from bisectionUtils import calcEfficiencyGap, csvToArray
+from bisectionUtils import calcCompet, csvToArray
+from effGapICYC import computeDistrictPlan
 
 ######################################################################
 # Author: 	Ian Ludden
-# Date: 	16 May 2019
+# Date: 	09 July 2019
 # 
-# Computes the efficiency gap of district plans resulting from 
+# Computes the competitiveness of district plans resulting from 
 # optimal play of the I-cut-you-freeze protocol introduced by 
 # Pegden et al. (2017). 
 # 
@@ -21,57 +22,12 @@ from bisectionUtils import calcEfficiencyGap, csvToArray
 DEBUG = False
 isCompressed = False # Flag for packing constraint
 
+competMetric = 'count_compet' # See calcCompet function in bisectionUtils
+competThreshold = 0.05 # Maximum margin considered competitive
+
 # Load tresholds from default file.
 thresholdsFilename = 'icycThresholds_1_to_53.csv'
 t = csvToArray(thresholdsFilename)
-
-def computeDistrictPlan(n, s, A):
-	"""Recursively compute the vote-shares of all districts.
-
-	Keyword arguments:
-	n -- the number of districts
-	s -- the total vote-share of Player 1 (always)
-	A -- the index of the cutting player (1 or 2)
-
-	Returns a list of Player 1 vote-shares in each district. 
-	"""
-	if DEBUG:
-		print('computeDistrictPlan({0},{1:.3f},{2})'.format(n, s, A))
-	
-	B = 3 - A
-
-	# Error checks.
-	if s > n:
-		raise ValueError('n={0}, s={1:.5f}. Cannot have s > n.'.format(n, s))
-
-	# 0. Base case.
-	if n == 1:
-		return [s]
-
-	# 1. Implement Lemmas 3.4, 3.6 from Pegden et al. (2017).
-
-	# Player 1's vote-share in the frozen district.
-	voteShare = 0
-
-	if A == 1 and s < n / 2:
-		# P2 wins a district in which they are fully packed. 
-		pass # s = s
-	elif A == 2 and s >= n / 2:
-		# Player 1 wins a district in which they are fully packed.
-		voteShare = 1
-	else: 
-		# The stronger player draws n identical districts. 
-		voteShare = s / n
-
-	s = s - voteShare
-
-	# 2. Recurse.
-	if DEBUG:
-		print('Calling computeDistrictPlan({0}, {1:.5f}, {2})'.format(n - 1, s, B))
-	otherVoteShares = computeDistrictPlan(n - 1, s, B)
-
-	return np.insert(otherVoteShares, 0, voteShare)
-
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
@@ -89,33 +45,32 @@ if __name__ == '__main__':
 	
 	# Range of vote-share values is slightly offset to avoid 
 	# ambiguities of landing exactly on a threshold
-	sSweep = np.linspace(0.101, n-0.099, resolution*n)
+	sSweep = np.linspace(0.0101, n-0.0099, resolution*n)
 	A = 1
 
-	effGaps = np.zeros(sSweep.shape)
+	competVals = np.zeros(sSweep.shape)
 	for i in range(len(sSweep)):
 		try:
 			voteShares = computeDistrictPlan(n, sSweep[i], A)
 			if isCompressed:
 				for j in range(len(voteShares)):
 					voteShares[j] = voteShares[j] * (1 - 2 * gamma) + gamma
-			effGaps[i] = calcEfficiencyGap(voteShares)
+			competVals[i] = calcCompet(voteShares, competMetric, competThreshold)
 		except ValueError:
 			print('Error computing district plan for n={0}, s={1:.5f}.'.format(n, sSweep[i]))
 			raise
 
-	normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
+	normalizedS = sSweep / n
 	if isCompressed:
 		normalizedS = normalizedS * (1 - 2 * gamma) + gamma
 
-	effGapsPercent = (np.concatenate(([-0.5], effGaps, [0.5]))) * 100.0
 	# titleText = 'Efficiency Gap vs. Vote-share, n = {0}'.format(n)
 	titleText = ''
 
 	fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,8))
 	fig.suptitle(titleText)
 
-	# Plot Seat-share and Efficiency Gap in separate plots
+	# Plot Seat-share and Competitiveness in separate plots
 	# (since y-axis is different for each)
 	yThresholds = np.array(range(n+1))
 	yThresholds = np.repeat(yThresholds, 2)
@@ -132,10 +87,13 @@ if __name__ == '__main__':
 	axarr[0].set(ylabel='Seat-share')
 	axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
 	axarr[0].set_xticks(np.arange(0, 1.25, step=0.25))
-	axarr[1].plot(normalizedS, effGapsPercent)
-	axarr[1].set(xlabel='Vote-share', ylabel='Efficency Gap (%)')
-	yticks1 = [-50, -25, -8, 0, 8, 25, 50]
-	axarr[1].set_yticks(yticks1)
+	axarr[1].plot(normalizedS, competVals)
+	if competMetric == 'max_margin':
+		axarr[1].set(xlabel='Vote-share', ylabel='Maximum Margin')
+		axarr[1].set_ylim(bottom=0, top=0.5)
+	else:
+		axarr[1].set(xlabel='Vote-share', ylabel='No. Competitive Districts')
+		axarr[1].set_ylim(bottom=-n, top=n)
 	axarr[1].set_xticks(np.arange(0, 1.25, step=0.25))
 	axarr[0].grid()
 	axarr[1].grid()
@@ -148,8 +106,8 @@ if __name__ == '__main__':
 			item.set_fontsize(16)
 	
 	if isCompressed:
-		fig.savefig('egPackingICYFquarter.pdf')
+		fig.savefig('competPackingICYFquarter.pdf')
 	else:
-		fig.savefig('egICYF{0}.pdf'.format(n))
+		fig.savefig('competICYF{0}.pdf'.format(n))
 
 	plt.show()

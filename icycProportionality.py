@@ -70,10 +70,18 @@ if __name__ == '__main__':
 	axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
 	axarr[1].plot(normalizedS, sainteLaguesPercent)
 	axarr[1].set(xlabel='Vote-share', ylabel='Sainte-Laguë Index (%)')
+	axarr[1].set_yticks(np.arange(0, 35, step=5))
 	axarr[0].grid()
 	axarr[1].grid()
 	plt.xticks(np.arange(0, 1.25, step=0.25))
-	fig.savefig('plotSLIndexAndSeatShareICYC_{0}_res{1}.png'.format(n,resolution))
+
+	# Change font sizes
+	for ax in axarr:
+		for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + 
+					 ax.get_xticklabels() + ax.get_yticklabels()):
+			item.set_fontsize(16)
+
+	fig.savefig('slICYF{0}.pdf'.format(n))
 	plt.show()
 
 

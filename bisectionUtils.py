@@ -100,3 +100,23 @@ def sainteLagueHelper(seatSharesPercent, voteSharesPercent):
 		total = total + (diff ** 2 / voteSharesPercent[i])
 
 	return total
+
+def calcCompet(voteShares, metric='max_margin', threshold=0.05):
+	"""Computes the competitiveness of the given districting plan. 
+	Keyword arguments:
+	voteShares -- a list of Player 1's vote-shares in each district
+	metric -- either 'max_margin' for maximum margin (absolute value) or 
+			  'count_compet' for number of competitive districts. 
+			  Default value is 'max_margin'.
+	threshold -- maximum margin considered competitive. 
+				 Only used for 'count_compet' metric. 
+				 Default value is 0.05 (+/- 5% from even 50%/50% split). 
+	"""
+	gaps = np.abs(np.subtract(voteShares, 0.5))
+	# print('total: {0:.2f}'.format(np.sum(voteShares)))
+	# print('vote-shares: {0}'.format(voteShares))
+	# print('gaps: {0}\n'.format(gaps))
+	if metric == 'max_margin':
+		return np.max(gaps)
+	else:
+		return np.count_nonzero(gaps <= threshold)

@@ -164,20 +164,36 @@ if __name__ == '__main__':
 	xThresholds = np.insert(xThresholds, 0, 0)
 	xThresholds = np.append(xThresholds, n)
 
+	if isCompressed:
+		xThresholds = xThresholds * (1 - 2 * gamma) + (gamma * n)
+
 	# Stephanopolous and McGhee suggest +/- 8% as the acceptable efficiency gap. 
 	egMax = 8 * np.ones(normalizedS.shape)
 
 	axarr[0].plot(xThresholds/n, yThresholds/n)
 	axarr[0].set(ylabel='Seat-share')
 	axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
+	axarr[0].set_xticks(np.arange(0, 1.25, step=0.25))
 	axarr[1].plot(normalizedS, effGapsPercent)
 	# axarr[1].plot(normalizedS, -egMax, 'k--')
 	# axarr[1].plot(normalizedS, egMax, 'k--')
 	axarr[1].set(xlabel='Vote-share', ylabel='Efficency Gap (%)')
 	yticks1 = [-50, -25, -8, 0, 8, 25, 50]
 	axarr[1].set_yticks(yticks1)
+	axarr[1].set_xticks(np.arange(0, 1.25, step=0.25))
 	axarr[0].grid()
 	axarr[1].grid()
-	plt.xticks(np.arange(0, 1.25, step=0.25))
-	# fig.savefig('plotEffGapsAndSeatShareBisection_{0}_res{1}.png'.format(n,resolution))
+	plt.xlim(0, 1)
+
+	# Change font sizes
+	for ax in axarr:
+		for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + 
+					 ax.get_xticklabels() + ax.get_yticklabels()):
+			item.set_fontsize(16)
+
+	if isCompressed:
+		fig.savefig('egPackingBquarter.pdf')
+	else:
+		fig.savefig('egB{0}.pdf'.format(n))
+
 	plt.show()
