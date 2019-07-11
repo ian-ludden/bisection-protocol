@@ -120,3 +120,11 @@ def calcCompet(voteShares, metric='max_margin', threshold=0.05):
 		return np.max(gaps)
 	else:
 		return np.count_nonzero(gaps <= threshold)
+
+def calcMeanMedian(voteShares):
+	"""Computes the difference between the mean and median
+	   vote-shares for Player 1. 
+	   The mean-median difference for Player 2 is simply 
+	   the negation of that of Player 1. 
+	"""
+	return np.mean(voteShares) - np.median(voteShares)
