@@ -2,3 +2,6 @@
 *.csv
 *.png
 *.pdf
+Plots/*
+Mathematica/*
+__pycache__/*
