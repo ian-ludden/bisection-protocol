@@ -109,7 +109,7 @@ if __name__ == '__main__':
 			item.set_fontsize(16)
 
 	if isCompressed:
-		fig.savefig('competPackingBquarter.pdf')
+		fig.savefig('competPackingB{0}quarter.pdf'.format(n))
 	else:
 		fig.savefig('competB{0}.pdf'.format(n))
 
