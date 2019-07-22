@@ -99,11 +99,15 @@ if __name__ == '__main__':
 	tB, KB = utils.getThresholds(protocols['B'], 53)
 	tIcyf, KIcyf = utils.getThresholds(protocols['ICYF'], 53)
 
+	print('State,Party Drawing First,Predicted Seat-Shares')
+	print(',,ICYF,Bisection')
+
 	i = 0
 	while i < len(data) - 1:
-		pprint(data[i])
-		pprint(data[i+1])
+		# pprint(data[i])
+		# pprint(data[i+1])
 		row = data[i]
+		stateName = str(row[1])
 		# Number of districts
 		n = int(row[2])
 		# Republican vote-share
@@ -141,8 +145,6 @@ if __name__ == '__main__':
 		gammas.append(0.5 - maxMarginIcyfD)
 		gammas.append(0.5 - maxMarginBisectionD)
 		voteShares = []
-		print('sR = {0:.2f}'.format(sR))
-		print('modified sR = {0:.2f}'.format((sR - gammas[0] * n) / (1 - 2 * gammas[0])))
 		voteShares.append(utils.getDistrictPlan(n, (sR - gammas[0] * n) / (1 - 2 * gammas[0]), A, 'ICYF', tIcyf, KIcyf))
 		voteShares.append(utils.getDistrictPlan(n, (sR - gammas[1] * n) / (1 - 2 * gammas[1]), A, 'B', tB, KB))
 		voteShares.append(utils.getDistrictPlan(n, (sD - gammas[2] * n) / (1 - 2 * gammas[2]), A, 'ICYF', tIcyf, KIcyf))
@@ -150,24 +152,15 @@ if __name__ == '__main__':
 
 		# Compress vote-shares to appropriate range (0.5 +/- max margin)
 		for index in range(len(voteShares)):
-			for j in range(len(voteShares)):
+			for j in range(len(voteShares[index])):
 				voteShares[index][j] = voteShares[index][j] * (1 - 2 * gammas[index]) + gammas[index]
-			# print(voteShares[index])
-			sumVoteShares = np.sum(voteShares[index])
-			print('Sum = {0:.2f} == {1:.2f}%\n'.format(sumVoteShares, sumVoteShares * 100. / n))
 
-		# filename = '{0}_{1}_{2}'.format(protocolAbbrev, metricAbbrev, n)
-		# if isCompressed:
-		# 	filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
+		seatShares = []
+		for index in range(len(voteShares)):
+			seatShares.append(np.sum(np.array(voteShares[index]) >= 0.5))
 
-		# if metric['units'] == '(%)':
-		# 	metricVals = metricVals * 100
-
-		# if setting['save_csv'] == 1:
-		# 	utils.arrayToCSV(np.array([normalizedS, metricVals]), '{0}.csv'.format(filename), precision=4)
-
-		# if setting['show_plot'] == 1:
-		# 	plt.show()
+		print('{2},R,{0:.2f}%,{1:.2f}%'.format(seatShares[0] * 100. / n, seatShares[1] * 100. / n, stateName))
+		print('{2},D,{0:.2f}%,{1:.2f}%'.format(100. - seatShares[2] * 100. / n, 100. - seatShares[3] * 100. / n, stateName))
 
 		# Increment index by 2 to go to next state
 		i += 2

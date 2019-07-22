@@ -225,7 +225,7 @@ if __name__ == '__main__':
 			metricVals = metricVals * 100
 
 		if setting['save_csv'] == 1:
-			utils.arrayToCSV(np.array([normalizedS, metricVals]), '{0}.csv'.format(filename), precision=4)
+			utils.arrayToCSV(np.transpose(np.array([normalizedS, metricVals])), '{0}.csv'.format(filename), precision=4)
 
 		# Plot Seat-share and Metric Vals in separate plots
 		# (since y-axis is different for each)
