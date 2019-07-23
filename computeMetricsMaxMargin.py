@@ -171,8 +171,9 @@ if __name__ == '__main__':
 			effGaps.append(utils.calcEfficiencyGap(voteShares[index]) * 100.)
 			competCounts.append(utils.calcCompet(voteShares[index]))
 
-		print('{0},R,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, seatShares[0], seatShares[1], slIndices[0], slIndices[1], effGaps[0], effGaps[1], competCounts[0], competCounts[1]))
-		print('{0},D,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, seatShares[2], seatShares[3], slIndices[2], slIndices[3], effGaps[2], effGaps[3], competCounts[2], competCounts[3]))
+		# Flip EG for R, seat-shares for D
+		print('{0},R,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, seatShares[0], seatShares[1], slIndices[0], slIndices[1], -1. * effGaps[0], -1. * effGaps[1], competCounts[0], competCounts[1]))
+		print('{0},D,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, 100. - seatShares[2], 100. - seatShares[3], slIndices[2], slIndices[3], effGaps[2], effGaps[3], competCounts[2], competCounts[3]))
 
 		# Increment index by 2 to go to next state
 		i += 2
