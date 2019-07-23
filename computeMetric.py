@@ -222,7 +222,7 @@ if __name__ == '__main__':
 			filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
 
 		if metric['units'] == '(%)':
-			metricVals = metricVals * 100
+			metricVals = metricVals * 100.
 
 		if setting['save_csv'] == 1:
 			utils.arrayToCSV(np.transpose(np.array([normalizedS, metricVals])), '{0}.csv'.format(filename), precision=4)

@@ -99,8 +99,8 @@ if __name__ == '__main__':
 	tB, KB = utils.getThresholds(protocols['B'], 53)
 	tIcyf, KIcyf = utils.getThresholds(protocols['ICYF'], 53)
 
-	print('State,Party Drawing First,Predicted Seat-Shares')
-	print(',,ICYF,Bisection')
+	print('State,Party Drawing First,Predicted R Seat-Share,,Sainte-Laguë index,,Efficiency Gap,,No. Competitive Districts (5% margin),,')
+	print(',,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection,')
 
 	i = 0
 	while i < len(data) - 1:
@@ -155,12 +155,24 @@ if __name__ == '__main__':
 			for j in range(len(voteShares[index])):
 				voteShares[index][j] = voteShares[index][j] * (1 - 2 * gammas[index]) + gammas[index]
 
+		# Compute seat-shares as percentages
 		seatShares = []
 		for index in range(len(voteShares)):
-			seatShares.append(np.sum(np.array(voteShares[index]) >= 0.5))
+			origSeatShare = np.sum(np.array(voteShares[index]) >= 0.5)
+			seatShares.append(origSeatShare * 100. / n)
 
-		print('{2},R,{0:.2f}%,{1:.2f}%'.format(seatShares[0] * 100. / n, seatShares[1] * 100. / n, stateName))
-		print('{2},D,{0:.2f}%,{1:.2f}%'.format(100. - seatShares[2] * 100. / n, 100. - seatShares[3] * 100. / n, stateName))
+		# Compute Sainte-Laguë indices, Efficiency Gaps, and No. Competitive Districts
+		slIndices = []
+		effGaps = []
+		competCounts = []
+		# TODO: Add partisan asymmetry?
+		for index in range(len(voteShares)):
+			slIndices.append(utils.calcSainteLagueIndex(voteShares[index]) * 100.)
+			effGaps.append(utils.calcEfficiencyGap(voteShares[index]) * 100.)
+			competCounts.append(utils.calcCompet(voteShares[index]))
+
+		print('{0},R,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, seatShares[0], seatShares[1], slIndices[0], slIndices[1], effGaps[0], effGaps[1], competCounts[0], competCounts[1]))
+		print('{0},D,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, seatShares[2], seatShares[3], slIndices[2], slIndices[3], effGaps[2], effGaps[3], competCounts[2], competCounts[3]))
 
 		# Increment index by 2 to go to next state
 		i += 2
