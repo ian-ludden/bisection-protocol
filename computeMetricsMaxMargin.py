@@ -99,8 +99,8 @@ if __name__ == '__main__':
 	tB, KB = utils.getThresholds(protocols['B'], 53)
 	tIcyf, KIcyf = utils.getThresholds(protocols['ICYF'], 53)
 
-	print('State,Party Drawing First,Predicted R Seat-Share,,Sainte-Laguë index,,Efficiency Gap,,No. Competitive Districts (5% margin),,')
-	print(',,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection,')
+	print('State,Party Drawing First,Predicted R Seat-Share,,Sainte-Laguë index,,Efficiency Gap,,Partisan Asymmetry,,No. Competitive Districts (5% margin),,')
+	print(',,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection,ICYF,Bisection')
 
 	i = 0
 	while i < len(data) - 1:
@@ -161,19 +161,20 @@ if __name__ == '__main__':
 			origSeatShare = np.sum(np.array(voteShares[index]) >= 0.5)
 			seatShares.append(origSeatShare * 100. / n)
 
-		# Compute Sainte-Laguë indices, Efficiency Gaps, and No. Competitive Districts
+		# Compute Sainte-Laguë indices, Efficiency Gaps, Partisan Asymmetry, and No. Competitive Districts
 		slIndices = []
 		effGaps = []
+		pas = []
 		competCounts = []
-		# TODO: Add partisan asymmetry?
 		for index in range(len(voteShares)):
 			slIndices.append(utils.calcSainteLagueIndex(voteShares[index]) * 100.)
 			effGaps.append(utils.calcEfficiencyGap(voteShares[index]) * 100.)
+			pas.append(utils.calcPaUniformSwing(voteShares[index]))
 			competCounts.append(utils.calcCompet(voteShares[index]))
 
 		# Flip EG for R, seat-shares for D
-		print('{0},R,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, seatShares[0], seatShares[1], slIndices[0], slIndices[1], -1. * effGaps[0], -1. * effGaps[1], competCounts[0], competCounts[1]))
-		print('{0},D,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7},{8}'.format(stateName, 100. - seatShares[2], 100. - seatShares[3], slIndices[2], slIndices[3], effGaps[2], effGaps[3], competCounts[2], competCounts[3]))
+		print('{0},R,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7:.3f},{8:.3f},{9},{10}'.format(stateName, seatShares[0], seatShares[1], slIndices[0], slIndices[1], -1. * effGaps[0], -1. * effGaps[1], pas[0], pas[1], competCounts[0], competCounts[1]))
+		print('{0},D,{1:.2f}%,{2:.2f}%,{3:.4f}%,{4:.4f}%,{5:.2f}%,{6:.2f}%,{7:.3f},{8:.3f},{9},{10}'.format(stateName, 100. - seatShares[2], 100. - seatShares[3], slIndices[2], slIndices[3], effGaps[2], effGaps[3], pas[2], pas[3], competCounts[2], competCounts[3]))
 
 		# Increment index by 2 to go to next state
 		i += 2
