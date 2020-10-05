@@ -369,6 +369,32 @@ def calcPA(thresholds, n):
 	return total
 
 
+def calcPaUniformSwing(voteShares):
+	"""Computes the partisan asymmetry (PA) of the 
+	   district plan given as a list of Player 1's vote-shares. 
+
+	   The PA formula used is the area between 
+	   seats-votes curves for the two players under a 
+	   uniform swing assumption. Its value is between 0 and 1. 
+
+	   Arguments:
+	   voteShares - a list of district vote-shares (between 0 and 1)
+	"""
+	n = len(voteShares)
+	# Sort the vote-shares descending
+	sortedVoteSharesDesc = np.sort(voteShares)[::-1]
+
+	# Compute thresholds for seats-votes curve
+	v = np.zeros(n)
+	for j in range(n):
+		vj = 0
+		for k in range(n):
+			vj += min(1, max(0, voteShares[k] - (voteShares[j] - 0.5)))
+		v[j] = vj * 1. / n
+	absTerms = np.subtract(np.add(v, np.flip(v)), np.ones(n))
+	return np.sum(np.absolute(absTerms)) / n
+
+
 def calcCompet(voteShares, threshold=0.05):
 	"""Computes the competitiveness of the given districting plan, 
 	   measured as the number of highly competitive districts. 
