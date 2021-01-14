@@ -162,7 +162,7 @@ def getThresholds(protocol, nMax):
 		print('Saving bisection optAseats.')
 		optAseatsFilename = 'optAseatsB_1_to_{0}.csv'.format(nUB - 1)
 		# All values are integers, so default precision of 1 is fine.
-		arrayToCSV(t[1:,1:], optAseatsFilename)
+		arrayToCSV(K[1:,1:], optAseatsFilename)
 
 	return [t, K]
 

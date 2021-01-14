@@ -1,46 +1,64 @@
 {
-	"settings": [
-		{
-			"name": "s10",
-			"protocol": "B",
-			"metric": "EG", 
-			"n": 10, 
-			"show_plot": 1,
-			"show_seats-votes": 1,
-			"save_plot": 0,
-			"save_csv": 1
-		},
-		{
-			"name": "s11",
-			"protocol": "ICYF",
-			"metric": "EG", 
-			"n": 10, 
-			"show_plot": 1,
-			"show_seats-votes": 1,
-			"save_plot": 0,
-			"save_csv": 1
-		},
-		{
-			"name": "s12",
-			"protocol": "B",
-			"metric": "EG", 
-			"n": 10, 
-			"packing_delta": 0.25, 
-			"show_plot": 1,
-			"show_seats-votes": 1,
-			"save_plot": 0,
-			"save_csv": 1
-		},
-		{
-			"name": "s13",
-			"protocol": "ICYF",
-			"metric": "EG", 
-			"n": 10, 
-			"packing_delta": 0.25, 
-			"show_plot": 1,
-			"show_seats-votes": 1,
-			"save_plot": 0,
-			"save_csv": 1
-		}
-	]
+    "settings": [
+        {
+            "name": "s100",
+            "protocol": "B",
+            "metric": "EG", 
+            "n": 4, 
+            "show_plot": 1,
+            "show_seats-votes": 1,
+            "save_plot": 0,
+            "save_csv": 0
+        },
+        {
+            "name": "s101",
+            "protocol": "ICYF",
+            "metric": "EG", 
+            "n": 4, 
+            "show_plot": 1,
+            "show_seats-votes": 1,
+            "save_plot": 0,
+            "save_csv": 0
+        },
+        {
+            "name": "s102",
+            "protocol": "B",
+            "metric": "SL", 
+            "n": 4, 
+            "show_plot": 1,
+            "show_seats-votes": 1,
+            "save_plot": 0,
+            "save_csv": 0
+        },
+        {
+            "name": "s103",
+            "protocol": "ICYF",
+            "metric": "SL", 
+            "n": 4, 
+            "show_plot": 1,
+            "show_seats-votes": 1,
+            "save_plot": 0,
+            "save_csv": 0
+        },
+        {
+            "name": "s104",
+            "protocol": "B",
+            "metric": "PA", 
+            "n": 4, 
+            "show_plot": 1,
+            "show_seats-votes": 1,
+            "save_plot": 0,
+            "save_csv": 0
+        },
+        {
+            "name": "s105",
+            "protocol": "ICYF",
+            "metric": "PA", 
+            "n": 4, 
+            "show_plot": 1,
+            "show_seats-votes": 1,
+            "save_plot": 0,
+            "save_csv": 0
+        }
+    ]
 }
