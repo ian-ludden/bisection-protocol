@@ -28,3 +28,32 @@ if __name__ == '__main__':
 	pprint(list(voteShares))
 	print('Sorted: ')
 	pprint(sorted(voteShares))
+
+	vs = voteShares.copy()
+	while sum(vs) < n:
+		candidate_jumps = [0.5 - v for v in vs if v < 0.5]
+		if candidate_jumps:
+			next_jump = min(candidate_jumps)
+		else:
+			next_jump = 1 - min(vs)
+		print(next_jump)
+
+		vs = [min(v + next_jump, 1) for v in vs]
+
+		print(sum(vs), sum([v >= 0.5 for v in vs]))
+
+	vs = voteShares.copy()
+	while sum(vs) > 0:
+		candidate_drops = [v - 0.5 for v in vs if v > 0.5]
+		if candidate_drops:
+			next_drop = min(candidate_drops)
+		else:
+			next_drop = max(vs)
+		print(next_drop)
+
+		vs = [max(v - next_drop, 0) for v in vs]
+
+		print(sum(vs), sum([v > 0.5 for v in vs]))
+
+
+
