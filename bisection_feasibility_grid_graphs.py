@@ -1,3 +1,4 @@
+from datetime import datetime
 from itertools import permutations
 from math import ceil
 import networkx as nx
@@ -150,9 +151,13 @@ if __name__ == '__main__':
     
     infeasible_indices = []
 
+    
+
     for i in range(len(partitions)):
-        if i % 10 == 0:
+        if i % 1000 == 0:
             print('Checking partition ', i, '...', sep='')
+            now = datetime.now()
+            print('\tCurrent time:', now.strftime("%H:%M:%S"))
         partition_data = partitions[i].reshape((num_rows, num_cols))
         # pprint(partition_data)
 
