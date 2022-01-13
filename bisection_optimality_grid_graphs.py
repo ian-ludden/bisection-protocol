@@ -12,12 +12,16 @@ import sys
 class DistrictPlan:
     """
     # TODO
+
+        voter_grid - a grid of the same shape as assignment_grid 
+                     indicating the voter distribution (+1 for player 1, 0 for player 2)
     """
-    def __init__(self, assignment_grid):
+    def __init__(self, assignment_grid, voter_grid):
         self.num_districts = int(np.max(assignment_grid))
         self.num_rows = len(assignment_grid)
         self.num_cols = len(assignment_grid[0])
         self.num_units = self.num_rows * self.num_cols
+        self.units_per_district = self.num_units // self.num_districts
 
         self.assignment = {}
         index = 1
@@ -50,6 +54,21 @@ class DistrictPlan:
                         self.cut_edges.add(tuple(sorted([index, east_neighbor_index])))
 
         self.district_graph = nx.Graph(list(district_edges))
+
+        # Compute wins for player 1, wins for player 2, and ties
+        votes = voter_grid.flatten()
+        self.wins1 = 0
+        self.wins2 = 0
+        self.ties = 0
+        for i in range(1, self.num_districts + 1):
+            unit_indices = [index for index in range(1, self.num_units + 1) if self.assignment[index] == i]
+            votes1 = sum([votes[unit_index - 1] for unit_index in unit_indices])
+            votes2 = self.units_per_district - votes1
+            if votes1 > votes2: self.wins1 += 1
+            elif votes2 > votes1: self.wins2 += 1
+            else: self.ties += 1
+
+        self.player1_utility = self.wins1 - self.wins2 # Net utility for player 1
 
 
     """
@@ -116,14 +135,16 @@ def enumerate_bipartitions(graph):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols]')
+    if len(sys.argv) < 5:
+        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols] [voter distribution filename]')
 
-    filename = sys.argv[1]
+    partition_filename = sys.argv[1]
     num_rows = int(sys.argv[2])
     num_cols = int(sys.argv[3])
+    voters_filename = sys.argv[4]
 
-    partitions = np.loadtxt(filename, dtype=int, delimiter=',')
+    partitions = np.loadtxt(partition_filename, dtype=int, delimiter=',')
+    voters = np.genfromtxt(voters_filename, dtype=int, delimiter=1)
     
     plans = []
 
@@ -139,17 +160,20 @@ if __name__ == '__main__':
         
         partition_data = partitions[i].reshape((num_rows, num_cols))
 
-        plan = DistrictPlan(partition_data)
+        plan = DistrictPlan(partition_data, voters)
         plans.append(plan)
 
     # List of sets of cut edges representing feasible bisections in the first round
-    first_round_strategies = []
+    first_round_strategies = [] # Alternatively, could iterate over partitions of grid into two equal-size components
 
     for i in range(len(plans)):
         plan = plans[i]
 
-        for node in plan.district_graph.nodes:
-            print(node, ':', [neighbor for neighbor in plan.district_graph.neighbors(node)])
+        if i % 100000 == 0:
+            print('Looking for strategies in partition ', i, '...', sep='')
+
+        # for node in plan.district_graph.nodes:
+        #     print(node, ':', [neighbor for neighbor in plan.district_graph.neighbors(node)])
 
         bipartitions = enumerate_bipartitions(plan.district_graph)
         for bipartition in bipartitions:
@@ -158,11 +182,49 @@ if __name__ == '__main__':
             if bipartition_cut_edges not in first_round_strategies:
                 first_round_strategies.append(bipartition_cut_edges)
     
+    print('Found', len(first_round_strategies), 'distinct first-round strategies.')
 
+    # Search for best first-round strategy given optimal second-round response
+    best_player1_utility = -1. * plans[0].num_districts
+    count_optimal_strategies = 0
+    latest_best_strategy_index = -1
+    resulting_plan_index = -1
 
-    # for i in range(len(plans)):
-    #     plan = plans[I]
+    for strategy_index, first_round_bisection in enumerate(first_round_strategies):
+        worst_player1_utility = plans[0].num_districts
+        latest_best_response_index = -1
+
+        if strategy_index % 10000 == 0:
+            print('Considering strategy index', strategy_index, '...')
+
+        for i in range(len(plans)):
+            plan = plans[i]
         
-        # if not bipartition_cut_edges.issubset(other_plan.cut_edges):
-        #     continue # Bisection is incompatible with 
+            if not first_round_bisection.issubset(plan.cut_edges):
+                continue # Bisection is incompatible with partition
+
+            player1_utility = plan.player1_utility
+            if player1_utility < worst_player1_utility:
+                latest_best_response_index = i
+                worst_player1_utility = player1_utility
+                if worst_player1_utility <= best_player1_utility:
+                    break # First-round strategy is dominated
+
+        # Check whether this first-round strategy beats (or ties) best known
+        if worst_player1_utility == best_player1_utility:
+            count_optimal_strategies += 1
+            latest_best_strategy_index = strategy_index
+            resulting_plan_index = latest_best_response_index
+        
+        if worst_player1_utility > best_player1_utility:
+            count_optimal_strategies = 1
+            best_player1_utility = worst_player1_utility
+            latest_best_strategy_index = strategy_index
+            resulting_plan_index = latest_best_response_index
+    
+    print('Optimal play gives player 1 utility {}.'.format(best_player1_utility))
+    print('Best (or one of the best) first-round bisection:', first_round_strategies[latest_best_strategy_index])
+    print('Best (or one of the best) second-round response plans:\n', plans[resulting_plan_index])
+
+
                 
