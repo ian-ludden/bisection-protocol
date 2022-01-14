@@ -91,6 +91,21 @@ class DistrictPlan:
                forced_cut_edges.add(cut_edge)
         return forced_cut_edges
 
+    """
+    Returns representation of DistrictPlan.
+    """
+    def __repr__(self) -> str:
+        str_rep = ""
+        index = 0
+        for i in range(self.num_rows):
+            for j in range(self.num_cols):
+                index += 1
+                str_rep += str(self.assignment[index])
+            str_rep += "\n" # End row
+        str_rep += '\nPlayer 1 receives ' + str(self.player1_utility) + ' net utility from ' + str(self.wins1) + ' win(s), '\
+                + str(self.wins2) + ' loss(es), and ' + str(self.ties) + ' tie(s).\n'
+        return str_rep
+
 # End of DistrictPlan class
 
 """
@@ -156,7 +171,7 @@ if __name__ == '__main__':
             # Memory check
             process = psutil.Process(os.getpid())
             mem_info = process.memory_info()
-            print('Current memory usage: {:.2f} MB'.format(mem_info.rss / (1024 ** 2)))
+            print('\tCurrent memory usage: {:.2f} MB'.format(mem_info.rss / (1024 ** 2)))
         
         partition_data = partitions[i].reshape((num_rows, num_cols))
 
@@ -195,7 +210,13 @@ if __name__ == '__main__':
         latest_best_response_index = -1
 
         if strategy_index % 10000 == 0:
-            print('Considering strategy index', strategy_index, '...')
+            print('Considering first-round strategy with index', strategy_index)
+            now = datetime.now()
+            print('\tCurrent time:', now.strftime("%H:%M:%S"))
+            # Memory check
+            process = psutil.Process(os.getpid())
+            mem_info = process.memory_info()
+            print('\tCurrent memory usage: {:.2f} MB'.format(mem_info.rss / (1024 ** 2)))
 
         for i in range(len(plans)):
             plan = plans[i]
@@ -221,10 +242,20 @@ if __name__ == '__main__':
             best_player1_utility = worst_player1_utility
             latest_best_strategy_index = strategy_index
             resulting_plan_index = latest_best_response_index
+
+        # TODO delete this break; just accelerating search for 6x6 instances with 50% vote-share and 4 districts, 
+        # since ties are impossible (districts have 9 units each) and neither player can win all 4 (need 20 to win 4)
+        if best_player1_utility >= 2:
+            break 
     
     print('Optimal play gives player 1 utility {}.'.format(best_player1_utility))
-    print('Best (or one of the best) first-round bisection:', first_round_strategies[latest_best_strategy_index])
-    print('Best (or one of the best) second-round response plans:\n', plans[resulting_plan_index])
+    print('There is (are)', count_optimal_strategies, 'optimal first-round bisection(s).')
+    print('Best (or one of the best) first-round bisection:')
+    pprint(first_round_strategies[latest_best_strategy_index])
+    print('Best (or one of the best) second-round response plans (index {}):'.format(resulting_plan_index))
+    print(plans[resulting_plan_index])
+    print('With cut edges:')
+    pprint(plans[resulting_plan_index].cut_edges)
 
 
                 
