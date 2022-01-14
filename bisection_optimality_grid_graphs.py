@@ -150,17 +150,26 @@ def enumerate_bipartitions(graph):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols] [voter distribution filename]')
+    if len(sys.argv) < 6:
+        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols] [voter distribution filename] [first player (\'R\' or \'D\')]')
 
     partition_filename = sys.argv[1]
     num_rows = int(sys.argv[2])
     num_cols = int(sys.argv[3])
     voters_filename = sys.argv[4]
+    first_player = sys.argv[5]
 
     partitions = np.loadtxt(partition_filename, dtype=int, delimiter=',')
-    voters = np.genfromtxt(voters_filename, dtype=int, delimiter=1)
+    voter_grid = np.genfromtxt(voters_filename, dtype=int, delimiter=1)
+
+    # Invert voter grid if R is bisecting first
+    if first_player == "R":
+        voter_grid = np.ones(voter_grid.shape) - voter_grid
     
+    print("Voter grid ({} first):".format(first_player))
+    pprint(voter_grid)
+    print()
+
     plans = []
 
     for i in range(len(partitions)):
@@ -175,7 +184,7 @@ if __name__ == '__main__':
         
         partition_data = partitions[i].reshape((num_rows, num_cols))
 
-        plan = DistrictPlan(partition_data, voters)
+        plan = DistrictPlan(partition_data, voter_grid)
         plans.append(plan)
 
     # List of sets of cut edges representing feasible bisections in the first round
