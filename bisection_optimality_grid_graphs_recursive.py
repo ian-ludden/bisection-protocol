@@ -1,5 +1,7 @@
 from datetime import datetime
-from math import floor, ceil
+from timeit import default_timer as timer
+from enum import unique
+from math import floor, log10
 from itertools import combinations
 import os
 import networkx as nx
@@ -7,6 +9,12 @@ import numpy as np
 from pprint import pprint
 import psutil
 import sys
+
+DEBUG = False
+
+def nodeset_to_string(nodeset):
+    return ",".join(sorted(str(node) for node in nodeset))
+
 
 # Start of DistrictPlan class
 
@@ -17,7 +25,7 @@ class DistrictPlan:
         voter_grid - a grid of the same shape as assignment_grid 
                      indicating the voter distribution (+1 for player 1, 0 for player 2)
     """
-    def __init__(self, assignment_grid, voter_grid):
+    def __init__(self, assignment_grid):
         self.num_districts = int(np.max(assignment_grid))
         self.num_rows = len(assignment_grid)
         self.num_cols = len(assignment_grid[0])
@@ -55,22 +63,6 @@ class DistrictPlan:
                         self.cut_edges.add(tuple(sorted([index, east_neighbor_index])))
 
         self.district_graph = nx.Graph(list(district_edges))
-
-        # Compute wins for player 1, wins for player 2, and ties
-        votes = voter_grid.flatten()
-        self.wins1 = 0
-        self.wins2 = 0
-        self.ties = 0
-        for i in range(1, self.num_districts + 1):
-            unit_indices = [index for index in range(1, self.num_units + 1) if self.assignment[index] == i]
-            votes1 = sum([votes[unit_index - 1] for unit_index in unit_indices])
-            votes2 = self.units_per_district - votes1
-            if votes1 > votes2: self.wins1 += 1
-            elif votes2 > votes1: self.wins2 += 1
-            else: self.ties += 1
-
-        self.player1_utility = self.wins1 - self.wins2 # Net utility for player 1
-
 
     """
     Computes the edges cut by the given bipartition. 
@@ -174,144 +166,227 @@ def enumerate_bisections(graph):
     for candidate_side1 in candidates_side1:
         complement_nodes = set(nodes).difference(candidate_side1)
         if nx.is_connected(nx.subgraph(graph, candidate_side1)) and nx.is_connected(nx.subgraph(graph, complement_nodes)):
-            side1_node_sets.append(candidates_side1)
+            side1_node_sets.append(candidate_side1)
     
     return side1_node_sets
 
 
-"""
-Recursively computes optimal bisections. 
 
-Parameters:
-===============
-    previous_cut_edges - list of sets of edges cut in each round so far
+class BisectionInstance:
+
+    def __init__(self, partition_filename, voters_filename, num_rows, num_cols, first_player="D"):
+        partitions = np.loadtxt(partition_filename, dtype=int, delimiter=',')
+        
+        voter_grid = np.genfromtxt(voters_filename, dtype=int, delimiter=1)
+        self.memoized_utilities = {}
+        self.plans = []
+        self.num_rows = num_rows
+        self.num_cols = num_cols
+        
+        if DEBUG:
+            print("Voter grid (1 is D, 0 is R):")
+            pprint(voter_grid)
+            print()
+
+        self.votes = voter_grid.flatten()
+
+        # Build plans
+        for i in range(len(partitions)):
+            if DEBUG and i % (10**(floor(log10(len(partitions))) - 1)) == 0: # Check progress every 10% or so
+                print('Loading partition ', i, '...', sep='')
+                now = datetime.now()
+                print('\tCurrent time:', now.strftime("%H:%M:%S"))
+                # Memory check
+                process = psutil.Process(os.getpid())
+                mem_info = process.memory_info()
+                print('\tCurrent memory usage: {:.2f} MB'.format(mem_info.rss / (1024 ** 2)))
+            
+            partition_data = partitions[i].reshape((self.num_rows, self.num_cols))
+
+            plan = DistrictPlan(partition_data)
+            self.plans.append(plan)
+
+        self.num_districts = self.plans[0].num_districts
+        self.units_per_district = self.plans[0].units_per_district
+
+        # Build unit adjacency graph
+        unit_edges = set()
+        for u in range(1, self.num_rows * self.num_cols + 1):
+            u_row = (u - 1) // self.num_cols
+            u_col = (u - 1) % self.num_cols
+            for v in range(u, self.num_rows * self.num_cols + 1):
+                v_row = (v - 1) // self.num_cols
+                v_col = (v - 1) % self.num_cols
+                
+                if abs(u_row - v_row) + abs(u_col - v_col) == 1:
+                    unit_edges.add((u, v))
+
+        self.graph = nx.Graph(unit_edges)
 
 
-Returns:
-===============
-    list of sets of edges cut in each round of optimal bisections
-"""
-def recursive_optimal_bisection(previous_cut_edges=[]):
-    pass #TODO
+    """
+    Computes the utility of a single district, 
+    formed from the given set of nodes (units), 
+    from the perspective of the current player. 
 
+    Parameters:
+    ===========
+        nodeset - set of nodes (unit indices)
+        current_player - "D" or "R"
+    
+    Returns:
+    ===========
+        1 if current player has simple majority, 
+        -1 if other player has simple majority, 
+        0 otherwise (tie)
+    """
+    def district_utility(self, nodeset, current_player):
+        votes_d = sum([self.votes[node - 1] for node in nodeset])
+        votes_current_player = votes_d if current_player == "D" else len(nodeset) - votes_d
+        if votes_current_player > len(nodeset) / 2:
+            return 1
+        elif votes_current_player > len(nodeset) / 2:
+            return -1
+        else:
+            return 0
+
+
+    """
+    Lists unique assignments of the given set of nodes (units)
+    to *whole* districts, among all feasible district plans. 
+
+    Iterates over all possible plans, so could take a while.
+
+    Parameters:
+    ===========
+        nodeset - set of node (unit) indices
+
+    Returns:
+    ===========
+        list of unique assignments of the given set of nodes, 
+        represented as dictionaries mapping node IDs to districts, 
+        with districts relabeled to be consecutive integers starting from 1
+    """
+    def enumerate_unique_plans(self, nodeset):
+        if len(nodeset) == self.num_rows * self.num_cols: # Shortcut for first (root) call
+            return [plan.assignment for plan in self.plans]
+
+        unique_plans = []
+        
+        for plan in self.plans:
+            asst = plan.assignment
+            restricted_plan = {unit : asst[unit] for unit in nodeset}
+            
+            vals = set(restricted_plan.values())
+            if len(vals) > (len(nodeset) // self.units_per_district): # Must form whole districts
+                continue
+
+            if restricted_plan not in unique_plans:
+                unique_plans.append(restricted_plan)
+
+        return unique_plans
+
+
+    """
+    Recursively computes an optimal bisection.
+
+    Parameters:
+    ===============
+        nodeset - the set of nodes (units) in the piece to be bisected 
+        current_player - "D", corresponding to 1s in self.votes, or "R", corresponding to 0s
+
+    Returns:
+    ===============
+        best_util - the highest possible first-player utility under optimal play
+    """
+    def recursive_optimal_bisection(self, nodeset, current_player):
+        nodeset_str = nodeset_to_string(nodeset)
+        if nodeset_str in self.memoized_utilities: 
+            return self.memoized_utilities[nodeset_str]
+
+        if len(nodeset) <= self.units_per_district:
+            return self.district_utility(nodeset, current_player)
+
+        # districts_in_piece = len(nodeset) // self.units_per_district
+        
+        next_player = "D" if current_player == "R" else "R"
+        unique_plans = self.enumerate_unique_plans(nodeset)
+
+        if len(nodeset) == (self.num_rows * self.num_cols):
+            print("Found", len(unique_plans), "unique plans.")
+
+        best_utility = -1 * (len(nodeset) // self.units_per_district)
+
+        # Iterate over distinct plans (partitions) for the piece
+        for unique_plan in unique_plans:
+            district_edges = set()
+            for node_u in unique_plan:
+                district_u = unique_plan[node_u]
+                for node_v in self.graph.neighbors(node_u):
+                    if node_v not in nodeset: continue
+                    district_v = unique_plan[node_v]
+                    if district_u != district_v:
+                        district_edges.add(tuple(sorted([district_u, district_v])))
+
+            aux_graph = nx.Graph(district_edges)
+
+            if aux_graph.number_of_nodes() <= 0:
+                continue
+
+            unique_bisections = enumerate_bisections(aux_graph)
+            
+            # Iterate over distinct bisections of the piece that fit with the current plan
+            for side1_tuple in unique_bisections:
+                side1 = set(side1_tuple)
+                nodeset1 = set([node for node in nodeset if unique_plan[node] in side1])
+                nodeset2 = nodeset.difference(nodeset1)
+
+                if DEBUG:
+                    print('Recursing on:')
+                    print('\t', nodeset1, sep='')
+                    print('\t', nodeset2, sep='')
+
+                opponent_util1 = self.recursive_optimal_bisection(nodeset1, next_player)
+                opponent_util2 = self.recursive_optimal_bisection(nodeset2, next_player)
+
+                utility = -1 * (opponent_util1 + opponent_util2) # Negate, since zero-sum
+                if utility > best_utility:
+                    best_utility = utility
+
+        # Memoize best utility
+        self.memoized_utilities[nodeset_to_string(nodeset)] = best_utility
+
+        return best_utility
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 6:
-        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols] [voter distribution filename] [first player (\'R\' or \'D\')]')
+    if len(sys.argv) < 5:
+        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols] [voter distribution filename] [first player (\'R\' or \'D\', optional with default \'D\')]')
 
     partition_filename = sys.argv[1]
     num_rows = int(sys.argv[2])
     num_cols = int(sys.argv[3])
     voters_filename = sys.argv[4]
-    first_player = sys.argv[5]
-
-    partitions = np.loadtxt(partition_filename, dtype=int, delimiter=',')
-    voter_grid = np.genfromtxt(voters_filename, dtype=int, delimiter=1)
-
-    # Invert voter grid if R is bisecting first
-    if first_player == "R":
-        voter_grid = np.ones(voter_grid.shape) - voter_grid
     
-    print("Voter grid ({} first):".format(first_player))
-    pprint(voter_grid)
-    print()
+    now = datetime.now()
+    print('Start time:', now.strftime("%H:%M:%S"))
+    start = timer()
 
-    plans = []
+    if len(sys.argv) >= 6:
+        first_player = sys.argv[5]
+        bisection_instance = BisectionInstance(partition_filename, voters_filename, num_rows, num_cols, first_player)
+    else:
+        first_player = "D"
+        bisection_instance = BisectionInstance(partition_filename, voters_filename, num_rows, num_cols)
 
-    for i in range(len(partitions)):
-        if i % 100000 == 0:
-            print('Loading partition ', i, '...', sep='')
-            now = datetime.now()
-            print('\tCurrent time:', now.strftime("%H:%M:%S"))
-            # Memory check
-            process = psutil.Process(os.getpid())
-            mem_info = process.memory_info()
-            print('\tCurrent memory usage: {:.2f} MB'.format(mem_info.rss / (1024 ** 2)))
-        
-        partition_data = partitions[i].reshape((num_rows, num_cols))
+    full_nodeset = set([i for i in range(1, num_rows * num_cols + 1)])
+    best_utility_first_player = bisection_instance.recursive_optimal_bisection(full_nodeset, first_player)
 
-        plan = DistrictPlan(partition_data, voter_grid)
-        plans.append(plan)
-
-    # List of sets of cut edges representing feasible bisections in the first round
-    first_round_strategies = [] # Alternatively, could iterate over partitions of grid into two equal-size components
-
-    for i in range(len(plans)):
-        plan = plans[i]
-
-        if i % 100000 == 0:
-            print('Looking for strategies in partition ', i, '...', sep='')
-
-        # for node in plan.district_graph.nodes:
-        #     print(node, ':', [neighbor for neighbor in plan.district_graph.neighbors(node)])
-
-        bipartitions = enumerate_bipartitions(plan.district_graph)
-        for bipartition in bipartitions:
-            bipartition_cut_edges = plan.edges_cut_by_bipartition(bipartition)
-            
-            if bipartition_cut_edges not in first_round_strategies:
-                first_round_strategies.append(bipartition_cut_edges)
-    
-    print('Found', len(first_round_strategies), 'distinct first-round strategies.')
-
-    # Search for best first-round strategy given optimal second-round response
-    best_player1_utility = -1. * plans[0].num_districts
-    count_optimal_strategies = 0
-    latest_best_strategy_index = -1
-    resulting_plan_index = -1
-
-    for strategy_index, first_round_bisection in enumerate(first_round_strategies):
-        worst_player1_utility = plans[0].num_districts
-        latest_best_response_index = -1
-
-        if strategy_index % 10000 == 0:
-            print('Considering first-round strategy with index', strategy_index)
-            now = datetime.now()
-            print('\tCurrent time:', now.strftime("%H:%M:%S"))
-            # Memory check
-            process = psutil.Process(os.getpid())
-            mem_info = process.memory_info()
-            print('\tCurrent memory usage: {:.2f} MB'.format(mem_info.rss / (1024 ** 2)))
-
-        for i in range(len(plans)):
-            plan = plans[i]
-        
-            if not first_round_bisection.issubset(plan.cut_edges):
-                continue # Bisection is incompatible with partition
-
-            player1_utility = plan.player1_utility
-            if player1_utility < worst_player1_utility:
-                latest_best_response_index = i
-                worst_player1_utility = player1_utility
-                if worst_player1_utility <= best_player1_utility:
-                    break # First-round strategy is dominated
-
-        # Check whether this first-round strategy beats (or ties) best known
-        if worst_player1_utility == best_player1_utility:
-            count_optimal_strategies += 1
-            latest_best_strategy_index = strategy_index
-            resulting_plan_index = latest_best_response_index
-        
-        if worst_player1_utility > best_player1_utility:
-            count_optimal_strategies = 1
-            best_player1_utility = worst_player1_utility
-            latest_best_strategy_index = strategy_index
-            resulting_plan_index = latest_best_response_index
-
-        # TODO delete this break; just accelerating search for 6x6 instances with 50% vote-share and 4 districts, 
-        # since ties are impossible (districts have 9 units each) and neither player can win all 4 (need 20 to win 4)
-        if best_player1_utility >= 2:
-            break 
-    
-    print('Optimal play gives player 1 utility {}.'.format(best_player1_utility))
-    print('There is (are)', count_optimal_strategies, 'optimal first-round bisection(s).')
-    print('Best (or one of the best) first-round bisection:')
-    pprint(first_round_strategies[latest_best_strategy_index])
-    print('Best (or one of the best) second-round response plans (index {}):'.format(resulting_plan_index))
-    print(plans[resulting_plan_index])
-    print('With cut edges:')
-    pprint(plans[resulting_plan_index].cut_edges)
+    print("Best utility achieved by player", first_player, "when going first:", best_utility_first_player,'\n')    
+    end = timer()
+    now = datetime.now()
+    print('End time:', now.strftime("%H:%M:%S"))
+    print('Elapsed time: {:.3f} seconds'.format(end - start))
 
 
                 
