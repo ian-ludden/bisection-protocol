@@ -10,7 +10,7 @@ from pprint import pprint
 import psutil
 import sys
 
-DEBUG = False
+DEBUG = True
 
 def nodeset_to_string(nodeset):
     return ",".join(sorted(str(node) for node in nodeset))
@@ -245,7 +245,7 @@ class BisectionInstance:
         votes_current_player = votes_d if current_player == "D" else len(nodeset) - votes_d
         if votes_current_player > len(nodeset) / 2:
             return 1
-        elif votes_current_player > len(nodeset) / 2:
+        elif votes_current_player < len(nodeset) / 2:
             return -1
         else:
             return 0
@@ -333,6 +333,13 @@ class BisectionInstance:
             if aux_graph.number_of_nodes() <= 0:
                 continue
 
+            # Check simple utility bound before considering bisections
+            votes_d = sum(self.votes[node - 1] for node in nodeset)
+            votes_current_player = votes_d if current_player == "D" else len(nodeset) - votes_d
+            max_wins = votes_current_player // ((self.units_per_district // 2) + 1)
+            if max_wins <= best_utility:
+                continue # Can't beat best utility seen so far, so skip this plan
+
             unique_bisections = enumerate_bisections(aux_graph)
             
             # Iterate over distinct bisections of the piece that fit with the current plan
@@ -341,17 +348,15 @@ class BisectionInstance:
                 nodeset1 = set([node for node in nodeset if unique_plan[node] in side1])
                 nodeset2 = nodeset.difference(nodeset1)
 
-                if DEBUG:
-                    print('Recursing on:')
-                    print('\t', nodeset1, sep='')
-                    print('\t', nodeset2, sep='')
-
                 opponent_util1 = self.recursive_optimal_bisection(nodeset1, next_player)
                 opponent_util2 = self.recursive_optimal_bisection(nodeset2, next_player)
 
                 utility = -1 * (opponent_util1 + opponent_util2) # Negate, since zero-sum
                 if utility > best_utility:
                     best_utility = utility
+                    if len(nodeset) == self.num_rows * self.num_cols: # Top level/root
+                        self.best_first_round_sides = [nodeset1, nodeset2]
+
 
         # Memoize best utility
         self.memoized_utilities[nodeset_to_string(nodeset)] = best_utility
@@ -387,6 +392,11 @@ if __name__ == '__main__':
     now = datetime.now()
     print('End time:', now.strftime("%H:%M:%S"))
     print('Elapsed time: {:.3f} seconds'.format(end - start))
+    print()
+
+    # TODO: Recover sequence of optimal bisections
+    # if bisection_instance.best_first_round_sides:
+    #     pprint(bisection_instance.best_first_round_sides)
 
 
                 
