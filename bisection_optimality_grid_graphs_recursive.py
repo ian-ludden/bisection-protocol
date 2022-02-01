@@ -20,83 +20,65 @@ def nodeset_to_string(nodeset):
 
 class DistrictPlan:
     """
-    # TODO
-
-        voter_grid - a grid of the same shape as assignment_grid 
-                     indicating the voter distribution (+1 for player 1, 0 for player 2)
-    """
-    def __init__(self, assignment_grid):
-        self.num_districts = int(np.max(assignment_grid))
-        self.num_rows = len(assignment_grid)
-        self.num_cols = len(assignment_grid[0])
-        self.num_units = self.num_rows * self.num_cols
-        self.units_per_district = self.num_units // self.num_districts
-
-        self.assignment = {}
-        index = 1
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
-                self.assignment[index] = assignment_grid[i, j]
-                index += 1
-
-        district_edges = set()
-        self.cut_edges = set()
-
-        # Build district adjacency graph and set of cut edges between districts
-        index = 0
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
-                index += 1
-                unit_assignment = assignment_grid[i, j]
-                if i < self.num_rows - 1: # Check unit below
-                    south_neighbor_assignment = assignment_grid[i + 1, j]
-                    if south_neighbor_assignment != unit_assignment:
-                        district_edges.add((unit_assignment, south_neighbor_assignment))
-                        south_neighbor_index = index + self.num_cols
-                        self.cut_edges.add(tuple(sorted([index, south_neighbor_index])))
-
-                if j < self.num_cols - 1:
-                    east_neighbor_assignment = assignment_grid[i, j + 1]
-                    if east_neighbor_assignment != unit_assignment:
-                        district_edges.add((unit_assignment, east_neighbor_assignment))
-                        east_neighbor_index = index + 1
-                        self.cut_edges.add(tuple(sorted([index, east_neighbor_index])))
-
-        self.district_graph = nx.Graph(list(district_edges))
-
-    """
-    Computes the edges cut by the given bipartition. 
+    Concise representation of a district plan as an assignment dictionary 
+    mapping units to districts, along with aggregate election results. 
 
     Parameters:
     ===========
-        bipartition - the set of district indices for one half of the bipartition
-    
-    Returns:
-    ===========
-        forced_cut_edges - the set of cut edges in the district plan which are also cut by the bipartition
+        assignment_grid - a 2-D grid of units' district labels (1 to k)
+
+        voter_grid - a grid of the same shape as assignment_grid 
+                     indicating the voter distribution (+1 for player D, 0 for player R)
+        
+        first_player - either "D" or "R"
     """
-    def edges_cut_by_bipartition(self, bipartition):
-        forced_cut_edges = set()
-        for cut_edge in self.cut_edges:
-            districts = [self.assignment[i] for i in cut_edge]
-            if (districts[0] in bipartition and districts[1] not in bipartition) or \
-               (districts[1] in bipartition and districts[0] not in bipartition):
-               forced_cut_edges.add(cut_edge)
-        return forced_cut_edges
+    def __init__(self, assignment_grid, voter_grid, first_player):
+        num_districts = int(np.max(assignment_grid))
+        num_rows = len(assignment_grid)
+        num_cols = len(assignment_grid[0])
+        num_units = num_rows * num_cols
+        units_per_district = num_units // num_districts
+        self.first_player = first_player
+        
+        votes = voter_grid.flatten()
+        if first_player == "R":
+            votes = [1 - vote for vote in votes] # Flip
+        votes_p1_districts = np.zeros((num_districts,))
+
+        self.assignment = {}
+        index = 1
+        for i in range(num_rows):
+            for j in range(num_cols):
+                assigned_district = assignment_grid[i, j]
+                self.assignment[index] = assigned_district
+                votes_p1_districts[assigned_district - 1] += (1 if votes[index - 1] == 1 else 0)
+                index += 1
+
+        self.wins_p1 = 0
+        self.ties = 0
+        for k in range(num_districts):
+            if votes_p1_districts[k] > units_per_district // 2:
+                self.wins_p1 += 1
+            if (units_per_district % 2 == 0) and (votes_p1_districts[k] == units_per_district // 2):
+                self.ties += 1
+
+        self.wins_p2 = num_districts - self.wins_p1 - self.ties
+        self.p1_utility = self.wins_p1 - self.wins_p2
+
 
     """
     Returns representation of DistrictPlan.
     """
     def __repr__(self) -> str:
         str_rep = ""
-        index = 0
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
-                index += 1
-                str_rep += str(self.assignment[index])
-            str_rep += "\n" # End row
-        str_rep += '\nPlayer 1 receives ' + str(self.player1_utility) + ' net utility from ' + str(self.wins1) + ' win(s), '\
-                + str(self.wins2) + ' loss(es), and ' + str(self.ties) + ' tie(s).\n'
+        # index = 0
+        # for i in range(self.num_rows):
+        #     for j in range(self.num_cols):
+        #         index += 1
+        #         str_rep += str(self.assignment[index])
+        #     str_rep += "\n" # End row
+        str_rep += '\nFirst player, ' + self.first_player +', receives ' + str(self.p1_utility) + ' net utility from ' + str(self.wins_p1) + ' win(s), '\
+                + str(self.wins_p2) + ' loss(es), and ' + str(self.ties) + ' tie(s).\n'
         return str_rep
 
 # End of DistrictPlan class
@@ -203,11 +185,11 @@ class BisectionInstance:
             
             partition_data = partitions[i].reshape((self.num_rows, self.num_cols))
 
-            plan = DistrictPlan(partition_data)
+            plan = DistrictPlan(partition_data, voter_grid, first_player)
             self.plans.append(plan)
 
-        self.num_districts = self.plans[0].num_districts
-        self.units_per_district = self.plans[0].units_per_district
+        self.num_districts = int(np.max(partitions[0]))
+        self.units_per_district = (self.num_rows * self.num_cols) // self.num_districts
 
         # Build unit adjacency graph
         unit_edges = set()
@@ -266,10 +248,12 @@ class BisectionInstance:
         list of unique assignments of the given set of nodes, 
         represented as dictionaries mapping node IDs to districts, 
         with districts relabeled to be consecutive integers starting from 1
+
+        For top/root level, returns list of DistrictPlan objects (assignment dictionaries with election/utility data)
     """
     def enumerate_unique_plans(self, nodeset):
         if len(nodeset) == self.num_rows * self.num_cols: # Shortcut for first (root) call
-            return [plan.assignment for plan in self.plans]
+            return self.plans
 
         unique_plans = []
         
@@ -307,18 +291,34 @@ class BisectionInstance:
         if len(nodeset) <= self.units_per_district:
             return self.district_utility(nodeset, current_player)
 
-        # districts_in_piece = len(nodeset) // self.units_per_district
+        is_top_level = len(nodeset) == self.num_rows * self.num_cols
         
         next_player = "D" if current_player == "R" else "R"
         unique_plans = self.enumerate_unique_plans(nodeset)
 
-        if len(nodeset) == (self.num_rows * self.num_cols):
-            print("Found", len(unique_plans), "unique plans.")
+        # Sort by decreasing first player utility at top/root level of recursion tree
+        if is_top_level:
+            print()
+            now = datetime.now()
+            print('Starting to sort unique_plans:', now.strftime("%H:%M:%S"))
+            unique_plans.sort(key=lambda plan : plan.p1_utility, reverse=True)
+            now = datetime.now()
+            print('Finished sorting unique_plans:', now.strftime("%H:%M:%S"))
+            print()
+
+        if is_top_level:
+            print("\nFound", len(unique_plans), "unique plans for full nodeset.")
 
         best_utility = -1 * (len(nodeset) // self.units_per_district)
 
         # Iterate over distinct plans (partitions) for the piece
-        for unique_plan in unique_plans:
+        for plan_index, unique_plan in enumerate(unique_plans):
+            if is_top_level and unique_plan.p1_utility < best_utility:
+                break
+
+            if is_top_level:
+                unique_plan = unique_plan.assignment # Reduce DistrictPlan to its assignment dictionary
+
             district_edges = set()
             for node_u in unique_plan:
                 district_u = unique_plan[node_u]
@@ -334,10 +334,17 @@ class BisectionInstance:
                 continue
 
             # Check simple utility bound before considering bisections
+            # (first player draws all, with no contiguity constraints) 
             votes_d = sum(self.votes[node - 1] for node in nodeset)
             votes_current_player = votes_d if current_player == "D" else len(nodeset) - votes_d
+            
             max_wins = votes_current_player // ((self.units_per_district // 2) + 1)
-            if max_wins <= best_utility:
+            max_ties_given_max_wins = 0
+            if self.units_per_district % 2 == 0:
+                max_ties_given_max_wins = (votes_current_player - (max_wins * ((self.units_per_district // 2) + 1))) // (self.units_per_district // 2)
+            max_utility = max_wins + (max_ties_given_max_wins / 2.) - (self.num_districts - max_wins - max_ties_given_max_wins)
+
+            if best_utility >= max_utility:
                 continue # Can't beat best utility seen so far, so skip this plan
 
             unique_bisections = enumerate_bisections(aux_graph)
@@ -356,6 +363,10 @@ class BisectionInstance:
                     best_utility = utility
                     if len(nodeset) == self.num_rows * self.num_cols: # Top level/root
                         self.best_first_round_sides = [nodeset1, nodeset2]
+                
+                    # Check utility bound
+                    if best_utility >= max_utility:
+                        break # Can't beat best utility seen so far, so continue on from this plan
 
 
         # Memoize best utility
