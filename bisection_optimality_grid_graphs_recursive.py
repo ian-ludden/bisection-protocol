@@ -1,6 +1,5 @@
 from datetime import datetime
 from timeit import default_timer as timer
-from enum import unique
 from math import floor, log10
 from itertools import combinations
 import os
@@ -265,6 +264,9 @@ class BisectionInstance:
             if len(vals) > (len(nodeset) // self.units_per_district): # Must form whole districts
                 continue
 
+            # TODO: relabel districts to be consecutive integers starting from 1
+            # (not urgent, just will speed things up by a small constant factor probably)
+
             if restricted_plan not in unique_plans:
                 unique_plans.append(restricted_plan)
 
@@ -288,6 +290,8 @@ class BisectionInstance:
         if nodeset_str in self.memoized_utilities: 
             return self.memoized_utilities[nodeset_str]
 
+        districts_in_piece = len(nodeset) // self.units_per_district
+
         if len(nodeset) <= self.units_per_district:
             return self.district_utility(nodeset, current_player)
 
@@ -298,13 +302,7 @@ class BisectionInstance:
 
         # Sort by decreasing first player utility at top/root level of recursion tree
         if is_top_level:
-            print()
-            now = datetime.now()
-            print('Starting to sort unique_plans:', now.strftime("%H:%M:%S"))
             unique_plans.sort(key=lambda plan : plan.p1_utility, reverse=True)
-            now = datetime.now()
-            print('Finished sorting unique_plans:', now.strftime("%H:%M:%S"))
-            print()
 
         if is_top_level:
             print("\nFound", len(unique_plans), "unique plans for full nodeset.")
@@ -342,7 +340,7 @@ class BisectionInstance:
             max_ties_given_max_wins = 0
             if self.units_per_district % 2 == 0:
                 max_ties_given_max_wins = (votes_current_player - (max_wins * ((self.units_per_district // 2) + 1))) // (self.units_per_district // 2)
-            max_utility = max_wins + (max_ties_given_max_wins / 2.) - (self.num_districts - max_wins - max_ties_given_max_wins)
+            max_utility = max_wins - (districts_in_piece - max_wins - max_ties_given_max_wins)
 
             if best_utility >= max_utility:
                 continue # Can't beat best utility seen so far, so skip this plan
@@ -361,8 +359,10 @@ class BisectionInstance:
                 utility = -1 * (opponent_util1 + opponent_util2) # Negate, since zero-sum
                 if utility > best_utility:
                     best_utility = utility
-                    if len(nodeset) == self.num_rows * self.num_cols: # Top level/root
+                    if is_top_level:
+                        print('New best utility at top level:', best_utility)
                         self.best_first_round_sides = [nodeset1, nodeset2]
+                        self.best_plan = unique_plans[plan_index]
                 
                     # Check utility bound
                     if best_utility >= max_utility:
@@ -406,8 +406,10 @@ if __name__ == '__main__':
     print()
 
     # TODO: Recover sequence of optimal bisections
-    # if bisection_instance.best_first_round_sides:
-    #     pprint(bisection_instance.best_first_round_sides)
+    if bisection_instance.best_first_round_sides:
+        pprint(bisection_instance.best_first_round_sides)
+        
+    if bisection_instance.best_plan:
+        pprint(bisection_instance.best_plan)
+        pprint(bisection_instance.best_plan.assignment)
 
-
-                
