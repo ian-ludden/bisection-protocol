@@ -1,48 +1,48 @@
 {
     "settings": [
         {
-            "name": "B_EG_55",
+            "name": "B_EG_150_40-60",
             "protocol": "B",
             "metric": "EG", 
-            "n": 55, 
+            "n": 150, 
             "show_plot": 1,
             "show_seats-votes": 0,
-            "save_plot": 0,
-            "save_csv": 1, 
-            "vote-shares": [0.425, 0.45, 0.475, 0.50, 0.525, 0.55, 0.575]
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60]
         }, 
         {
-            "name": "ICYF_EG_55",
+            "name": "ICYF_EG_150_40-60",
             "protocol": "ICYF",
             "metric": "EG", 
-            "n": 55, 
+            "n": 150, 
             "show_plot": 1,
             "show_seats-votes": 0,
-            "save_plot": 0,
-            "save_csv": 1, 
-            "vote-shares": [0.425, 0.45, 0.475, 0.50, 0.525, 0.55, 0.575]
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60]
         },
         {
-            "name": "B_SL_55",
+            "name": "B_SL_150_40-60",
             "protocol": "B",
             "metric": "SL", 
-            "n": 55, 
+            "n": 150, 
             "show_plot": 1,
             "show_seats-votes": 0,
-            "save_plot": 0,
-            "save_csv": 1, 
-            "vote-shares": [0.425, 0.45, 0.475, 0.50, 0.525, 0.55, 0.575]
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60]
         }, 
         {
-            "name": "ICYF_SL_55",
+            "name": "ICYF_SL_150_40-60",
             "protocol": "ICYF",
             "metric": "SL", 
-            "n": 55, 
+            "n": 150, 
             "show_plot": 1,
             "show_seats-votes": 0,
-            "save_plot": 0,
-            "save_csv": 1, 
-            "vote-shares": [0.425, 0.45, 0.475, 0.50, 0.525, 0.55, 0.575]
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60]
         }
      ]
  }

@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pprint import pprint
 import sys
+
+from sklearn.decomposition import NMF
 import utils
 
 ######################################################################
@@ -16,19 +18,19 @@ import utils
 ######################################################################
 DEFAULT_RESOLUTION = 53
 
-N_MAX = 55
+N_MAX = 150
 
 protocols = {
 	'B': {
 		'name': 'Bisection',
 		'abbrev': 'B',
-		'defaultThresholdsFilename': 'thresholdsB_1_to_54.csv', 
-		'defaultOptAFilename': 'optAseatsB_1_to_54.csv'
+		'defaultThresholdsFilename': 'thresholdsB_1_to_151.csv', 
+		'defaultOptAFilename': 'optAseatsB_1_to_151.csv'
 	}, 
 	'ICYF': {
 		'name': 'I-cut-you-freeze',
 		'abbrev': 'ICYF',
-		'defaultThresholdsFilename': 'thresholdsICYF_1_to_54.csv', 
+		'defaultThresholdsFilename': 'thresholdsICYF_1_to_151.csv', 
 		'defaultOptAFilename': None
 	}
 }
@@ -252,7 +254,7 @@ if __name__ == '__main__':
 		titleText = ''
 
 		if setting['show_seats-votes'] == 1:
-			fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,8))
+			fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,9))
 			fig.suptitle(titleText)
 			axarr[0].plot(xThresholds/n, yThresholds/n)
 			axarr[0].set(ylabel='Seat-share')
@@ -271,12 +273,12 @@ if __name__ == '__main__':
 			if metricAbbrev == 'CP':
 				ymax = ymax(n)
 			axarr[1].set_ylim(bottom=ymin, top=ymax)
-			axarr[1].set_xticks(np.arange(0, N_MAX + 5, step=5))
+			axarr[1].set_xticks(np.arange(0, N_MAX + 5, step=N_MAX // 10))
 			axarr[0].grid()
 			axarr[1].grid()
 			axarr[0].set_xlim(0, 1)
 			axarr[1].set_xlim(0, N_MAX + 2)
-			axarr[1].legend(['{:.1f}%'.format(voteShare * 100.) for voteShare in voteShares])
+			axarr[1].legend(['{:.1f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, title="Player 1 Vote-Share", loc='upper right', ncol=2)
 
 			if metricAbbrev == 'EG':
 				axarr[1].fill_between(nSweep, -8, 8, alpha=0.15)
@@ -287,9 +289,10 @@ if __name__ == '__main__':
 							 ax.get_xticklabels() + ax.get_yticklabels()):
 					item.set_fontsize(16)
 		else:
-			fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,4))
+			fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,5))
+			markers = ['o', 'x', '+', '^', 'd', '*', 's']
 			for v_i in range(len(voteShares)):
-				ax.plot(nSweep, metricVals[v_i, :], 'o')
+				ax.plot(nSweep, metricVals[v_i, :], markers[v_i % len(markers)])
 			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units'])
 			ax.set(xlabel='No. Districts', ylabel=ylabelMetric)
 			yticks1 = metric['yticks']
@@ -301,9 +304,9 @@ if __name__ == '__main__':
 			if metricAbbrev == 'CP':
 				ymax = ymax(n)
 			ax.set_ylim(bottom=ymin, top=ymax)
-			ax.set_xticks(np.arange(0, N_MAX + 5, step=5))
+			ax.set_xticks(np.arange(0, N_MAX + 5, step=N_MAX // 10))
 			ax.grid()
-			ax.legend(['{:.2f}%'.format(voteShare * 100.) for voteShare in voteShares])
+			ax.legend(['{:.2f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, title="Player 1 Vote-Share", loc='upper right', ncol=2)
 			plt.xlim(0, N_MAX + 2)
 			plt.gcf().subplots_adjust(bottom=0.2)
 
