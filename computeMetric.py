@@ -1,5 +1,4 @@
 import json
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from pprint import pprint
@@ -16,6 +15,8 @@ import utils
 # See settings.json for examples of valid settings. 
 ######################################################################
 DEFAULT_RESOLUTION = 53
+
+N_MAX = 55
 
 protocols = {
 	'B': {
@@ -37,9 +38,7 @@ metrics = {
 		'name': 'Efficiency Gap',
 		'fn': 'calcEfficiencyGap',
 		'units': '(%)',
-		'val_at_zero': -0.5,
-		'val_at_n': 0.5,
-		'yticks': [-50, -25, -8, 0, 8, 25, 50],
+		'yticks': [-50, -25, -15, -8, 0, 8, 15, 25, 50],
 		'ymin': -50,
 		'ymax': 50
 	},
@@ -184,48 +183,57 @@ if __name__ == '__main__':
 		# Increase resolution to make plot more accurate
 		resolution = setting.get('res', DEFAULT_RESOLUTION)
 
-		# Range of vote-share values is slightly offset to avoid 
-		# ambiguities of landing exactly on a threshold
-		sSweep = np.linspace(0.101, n-0.099, resolution*n)
+		# # Range of vote-share values is slightly offset to avoid 
+		# # ambiguities of landing exactly on a threshold
+		# sSweep = np.linspace(0.101, n-0.099, resolution*n)
+
+		# Vote-shares for which to compute metric values
+		voteShares = setting['vote-shares']
+
+		# Range of numbers of districts
+		nSweep = np.arange(1, N_MAX + 1)
 		
 		# Player 1 always goes first
 		A = 1
 
-		metricVals = np.zeros(sSweep.shape)
-		for i in range(len(sSweep)):
-			try:
-				voteShares = utils.getDistrictPlan(n, sSweep[i], A, protocolAbbrev, t, K)
-				if isCompressed:
-					# Compress vote-shares to appropriate range (0.5 +/- delta)
-					for j in range(len(voteShares)):
-						voteShares[j] = voteShares[j] * (1 - 2 * gamma) + gamma
+		metricVals = np.zeros((len(voteShares), len(nSweep)))
+		for v_i, voteShare in enumerate(voteShares):
+			for n_i in range(len(nSweep)):
+				try:
+					districtVoteShares = utils.getDistrictPlan(nSweep[n_i], voteShare * nSweep[n_i], A, protocolAbbrev, t, K)
+					# if isCompressed:
+					# 	# Compress vote-shares to appropriate range (0.5 +/- delta)
+					# 	for j in range(len(districtVoteShares)):
+					# 		districtVoteShares[j] = districtVoteShares[j] * (1 - 2 * gamma) + gamma
 
-				metricFn = getattr(utils, metric['fn'])
-				if metricAbbrev == 'CP' and 'compet_threshold' in setting.keys():
-					metricVals[i] = metricFn(voteShares, threshold=setting['compet_threshold'])
-				else:
-					metricVals[i] = metricFn(voteShares)
-			except ValueError:
-				print('Error computing district plan for n={0}, s={1:.5f}.'.format(n, sSweep[i]))
-				raise
+					metricFn = getattr(utils, metric['fn'])
+					if metricAbbrev == 'CP' and 'compet_threshold' in setting.keys():
+						metricVals[v_i, n_i] = metricFn(districtVoteShares, threshold=setting['compet_threshold'])
+					else:
+						metricVals[v_i, n_i] = metricFn(districtVoteShares)
+				except ValueError:
+					print('Error computing district plan for n={0}, s={1:.5f}.'.format(n_i, voteShare * nSweep[n_i]))
+					raise
 
-		# Normalize to put vote-shares between 0 and 1, and add 0 and n to make plot pretty
-		normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
+		# # Normalize to put vote-shares between 0 and 1, and add 0 and n to make plot pretty
+		# normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
+
 		if isCompressed:
-			# Need to scale the normalized vote-shares too
-			normalizedS = normalizedS * (1 - 2 * gamma) + gamma
+			# # Need to scale the normalized vote-shares too
+			# normalizedS = normalizedS * (1 - 2 * gamma) + gamma
+			raise NotImplementedError("No support for the packing_delta parameter yet.") # TODO: Figure out how to include packing when plotting over a range of values of n
 
-		metricVals = np.concatenate(([metric['val_at_zero']], metricVals, [metric['val_at_n']]))
+		# metricVals = np.concatenate(([metric['val_at_zero']], metricVals, [metric['val_at_n']]))
 
-		filename = '{0}_{1}_{2}'.format(protocolAbbrev, metricAbbrev, n)
-		if isCompressed:
-			filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
+		filename = '{0}_{1}_{2}'.format(protocolAbbrev, metricAbbrev, N_MAX)
+		# if isCompressed:
+		# 	filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
 
 		if metric['units'] == '(%)':
 			metricVals = metricVals * 100.
 
 		if setting['save_csv'] == 1:
-			utils.arrayToCSV(np.transpose(np.array([normalizedS, metricVals])), '{0}.csv'.format(filename), precision=4)
+			utils.arrayToCSV(metricVals, '{0}.csv'.format(filename), precision=4)
 
 		# Plot Seat-share and Metric Vals in separate plots
 		# (since y-axis is different for each)
@@ -250,7 +258,8 @@ if __name__ == '__main__':
 			axarr[0].set(ylabel='Seat-share')
 			axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
 			axarr[0].set_xticks(np.arange(0, 1.25, step=0.25))
-			axarr[1].plot(normalizedS, metricVals)
+			for v_i in range(len(voteShares)):
+				axarr[1].plot(nSweep, metricVals[v_i, :], 'o')
 			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units'])
 			axarr[1].set(xlabel='Vote-share', ylabel=ylabelMetric)
 			yticks1 = metric['yticks']
@@ -262,10 +271,15 @@ if __name__ == '__main__':
 			if metricAbbrev == 'CP':
 				ymax = ymax(n)
 			axarr[1].set_ylim(bottom=ymin, top=ymax)
-			axarr[1].set_xticks(np.arange(0, 1.25, step=0.25))
+			axarr[1].set_xticks(np.arange(0, N_MAX + 5, step=5))
 			axarr[0].grid()
 			axarr[1].grid()
-			plt.xlim(0, 1)
+			axarr[0].set_xlim(0, 1)
+			axarr[1].set_xlim(0, N_MAX + 2)
+			axarr[1].legend(['{:.1f}%'.format(voteShare * 100.) for voteShare in voteShares])
+
+			if metricAbbrev == 'EG':
+				axarr[1].fill_between(nSweep, -8, 8, alpha=0.15)
 
 			# Change font sizes
 			for ax in axarr:
@@ -274,9 +288,10 @@ if __name__ == '__main__':
 					item.set_fontsize(16)
 		else:
 			fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,4))
-			ax.plot(normalizedS, metricVals)
+			for v_i in range(len(voteShares)):
+				ax.plot(nSweep, metricVals[v_i, :], 'o')
 			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units'])
-			ax.set(xlabel='Vote-share', ylabel=ylabelMetric)
+			ax.set(xlabel='No. Districts', ylabel=ylabelMetric)
 			yticks1 = metric['yticks']
 			if metricAbbrev == 'CP':
 				yticks1 = yticks1(n)
@@ -286,10 +301,14 @@ if __name__ == '__main__':
 			if metricAbbrev == 'CP':
 				ymax = ymax(n)
 			ax.set_ylim(bottom=ymin, top=ymax)
-			ax.set_xticks(np.arange(0, 1.25, step=0.25))
+			ax.set_xticks(np.arange(0, N_MAX + 5, step=5))
 			ax.grid()
-			plt.xlim(0, 1)
+			ax.legend(['{:.2f}%'.format(voteShare * 100.) for voteShare in voteShares])
+			plt.xlim(0, N_MAX + 2)
 			plt.gcf().subplots_adjust(bottom=0.2)
+
+			if metricAbbrev == 'EG':
+				ax.fill_between([0, N_MAX + 5], -8, 8, alpha=0.15)
 
 			for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + 
 						 ax.get_xticklabels() + ax.get_yticklabels()):
