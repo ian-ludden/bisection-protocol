@@ -120,7 +120,7 @@ def computePA(setting):
 	# TODO: Handle packing constraint (compress)
 
 	if setting['save_plot'] == 1:
-		fig.savefig('{0}.pdf'.format(filename))
+		fig.savefig('{0}.pdf'.format(filename), bbox_inches='tight')
 
 	if setting['show_plot'] == 1:
 		plt.show()
@@ -318,7 +318,7 @@ if __name__ == '__main__':
 				item.set_fontsize(16)
 
 		if setting['save_plot'] == 1:
-			fig.savefig('{0}.pdf'.format(filename))
+			fig.savefig('{0}.pdf'.format(filename), bbox_inches='tight')
 
 		if setting['show_plot'] == 1:
 			plt.show()
