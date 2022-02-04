@@ -278,7 +278,8 @@ if __name__ == '__main__':
 			axarr[1].grid()
 			axarr[0].set_xlim(0, 1)
 			axarr[1].set_xlim(0, N_MAX + 2)
-			axarr[1].legend(['{:.1f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, title="Player 1 Vote-Share", loc='upper right', ncol=2)
+			lg = axarr[1].legend(['{:.1f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, loc='upper right', ncol=2)
+			lg.set_title("Player 1 Vote-Share", prop={'size': 16})
 
 			if metricAbbrev == 'EG':
 				axarr[1].fill_between(nSweep, -8, 8, alpha=0.15)
@@ -289,7 +290,7 @@ if __name__ == '__main__':
 							 ax.get_xticklabels() + ax.get_yticklabels()):
 					item.set_fontsize(16)
 		else:
-			fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,5))
+			fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,6))
 			markers = ['o', 'x', '+', '^', 'd', '*', 's']
 			for v_i in range(len(voteShares)):
 				ax.plot(nSweep, metricVals[v_i, :], markers[v_i % len(markers)])
@@ -306,7 +307,8 @@ if __name__ == '__main__':
 			ax.set_ylim(bottom=ymin, top=ymax)
 			ax.set_xticks(np.arange(0, N_MAX + 5, step=N_MAX // 10))
 			ax.grid()
-			ax.legend(['{:.2f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, title="Player 1 Vote-Share", loc='upper right', ncol=2)
+			lg = ax.legend(['{:.2f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, loc='upper right', ncol=2)
+			lg.set_title("Player 1 Vote-Share", prop={'size': 16})
 			plt.xlim(0, N_MAX + 2)
 			plt.gcf().subplots_adjust(bottom=0.2)
 
