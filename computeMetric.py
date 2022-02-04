@@ -202,11 +202,17 @@ if __name__ == '__main__':
 		for v_i, voteShare in enumerate(voteShares):
 			for n_i in range(len(nSweep)):
 				try:
-					districtVoteShares = utils.getDistrictPlan(nSweep[n_i], voteShare * nSweep[n_i], A, protocolAbbrev, t, K)
-					# if isCompressed:
-					# 	# Compress vote-shares to appropriate range (0.5 +/- delta)
-					# 	for j in range(len(districtVoteShares)):
-					# 		districtVoteShares[j] = districtVoteShares[j] * (1 - 2 * gamma) + gamma
+					voteShareRaw = voteShare * nSweep[n_i]
+					if isCompressed:
+						# Scale down voteShareRaw so total is a voteShare fraction after later compression
+						voteShareRaw -= gamma * nSweep[n_i]
+						voteShareRaw /= (1 - 2 * gamma)
+
+					districtVoteShares = utils.getDistrictPlan(nSweep[n_i], voteShareRaw, A, protocolAbbrev, t, K)
+					if isCompressed:
+						# Compress vote-shares to appropriate range (0.5 +/- delta)
+						for j in range(len(districtVoteShares)):
+							districtVoteShares[j] = districtVoteShares[j] * (1 - 2 * gamma) + gamma
 
 					metricFn = getattr(utils, metric['fn'])
 					if metricAbbrev == 'CP' and 'compet_threshold' in setting.keys():
@@ -214,22 +220,12 @@ if __name__ == '__main__':
 					else:
 						metricVals[v_i, n_i] = metricFn(districtVoteShares)
 				except ValueError:
-					print('Error computing district plan for n={0}, s={1:.5f}.'.format(n_i, voteShare * nSweep[n_i]))
+					print('Error computing district plan for n={0}, vote-share={1:.5f}.'.format(n_i, voteShare))
 					raise
 
-		# # Normalize to put vote-shares between 0 and 1, and add 0 and n to make plot pretty
-		# normalizedS = (np.concatenate(([0.0], sSweep, [n]))) / n
-
-		if isCompressed:
-			# # Need to scale the normalized vote-shares too
-			# normalizedS = normalizedS * (1 - 2 * gamma) + gamma
-			raise NotImplementedError("No support for the packing_delta parameter yet.") # TODO: Figure out how to include packing when plotting over a range of values of n
-
-		# metricVals = np.concatenate(([metric['val_at_zero']], metricVals, [metric['val_at_n']]))
-
 		filename = '{0}_{1}_{2}'.format(protocolAbbrev, metricAbbrev, N_MAX)
-		# if isCompressed:
-		# 	filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
+		if isCompressed:
+			filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
 
 		if metric['units'] == '(%)':
 			metricVals = metricVals * 100.

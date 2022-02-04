@@ -43,6 +43,55 @@
             "save_plot": 1,
             "save_csv": 0, 
             "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60]
+        },
+        {
+            "name": "B_EG_150_40-60_packing",
+            "protocol": "B",
+            "metric": "EG", 
+            "n": 150, 
+            "show_plot": 1,
+            "show_seats-votes": 0,
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60], 
+            "packing_delta": 0.25
+        }, 
+        {
+            "name": "ICYF_EG_150_40-60_packing",
+            "protocol": "ICYF",
+            "metric": "EG", 
+            "n": 150, 
+            "show_plot": 1,
+            "show_seats-votes": 0,
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60], 
+            "packing_delta": 0.25
+        },
+        {
+            "name": "B_SL_150_40-60_packing",
+            "protocol": "B",
+            "metric": "SL", 
+            "n": 150, 
+            "show_plot": 1,
+            "show_seats-votes": 0,
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60], 
+            "packing_delta": 0.25
+        }, 
+        {
+            "name": "ICYF_SL_150_40-60_packing",
+            "protocol": "ICYF",
+            "metric": "SL", 
+            "n": 150, 
+            "show_plot": 1,
+            "show_seats-votes": 0,
+            "save_plot": 1,
+            "save_csv": 0, 
+            "vote-shares": [0.40, 0.45, 0.50, 0.55, 0.60], 
+            "packing_delta": 0.25
         }
+
      ]
  }
