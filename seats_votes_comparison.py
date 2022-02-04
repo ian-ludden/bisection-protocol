@@ -126,7 +126,7 @@ if __name__ == '__main__':
     pprint(sorted(voteShares))
 
     plt.plot(x_protocol, y_protocol)
-    plt.plot(x_plan, y_plan)
+    plt.plot(x_plan, y_plan, '--')
     plt.title('Seats-votes curves for protocol and district plan, N = {}'.format(n))
     plt.legend(["{} Protocol".format(protocol['name']), "District Plan for s1 = {}".format(s1)])
     plt.xlabel('Player 1 Vote-share')
