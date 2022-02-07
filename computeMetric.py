@@ -4,7 +4,6 @@ import numpy as np
 from pprint import pprint
 import sys
 
-from sklearn.decomposition import NMF
 import utils
 
 ######################################################################
@@ -16,8 +15,6 @@ import utils
 # Optionally saves the data to a csv file and shows/saves a plot. 
 # See settings.json for examples of valid settings. 
 ######################################################################
-DEFAULT_RESOLUTION = 53
-
 N_MAX = 150
 
 protocols = {
@@ -86,46 +83,6 @@ metrics = {
 	}
 }
 
-def computePA(setting):
-	"""Computes the partisan asymmetry of both protocols for 
-	   each number of districts up to the given n.
-	   Supports packing constraint.
-	"""
-	n = setting['n']
-	isCompressed = 'packing_delta' in setting.keys()
-	if isCompressed:
-		delta = float(setting['packing_delta'])
-		gamma = 0.5 - delta # Lower bound on vote-share in district
-
-	bPAs = np.zeros(n + 1)
-	icyfPAs = np.zeros(n + 1)
-
-	bThresholds, bOptAseats = utils.getThresholds(protocols['B'], n)
-	icyfThresholds, icyfOptAseats = utils.getThresholds(protocols['ICYF'], n)
-
-	for i in range(1, n + 1):
-		bPAs[i] = utils.calcPA(bThresholds[i,:(i+1)], i)
-		icyfPAs[i] = utils.calcPA(icyfThresholds[i,:(i+1)], i)
-
-	xVals = np.arange(1, n + 1)
-
-	filename = '{0}_{1}'.format(metricAbbrev, n)
-	if isCompressed:
-		filename = '{0}_{1}_{2:.2f}'.format(filename, 'packing', delta)
-
-	if setting['save_csv'] == 1:
-		utils.arrayToCSV(np.array([xVals, bPAs[1:], icyfPAs[1:]]).T, '{0}.csv'.format(filename), precision=4)
-
-	# TODO: Plot
-	# TODO: Handle packing constraint (compress)
-
-	if setting['save_plot'] == 1:
-		fig.savefig('{0}.pdf'.format(filename), bbox_inches='tight')
-
-	if setting['show_plot'] == 1:
-		plt.show()
-
-
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
@@ -151,12 +108,6 @@ if __name__ == '__main__':
 		except KeyError:
 			exit('Setting {0} is missing protocol and/or metric name.'.format(setting['name']))
 
-		if metricAbbrev == 'PA':
-			# PA is handled differently, since each n generates a single value
-			# and we want to plot results for both protocols together. 
-			computePA(setting)
-			exit()
-
 		try:
 			protocol = protocols[protocolAbbrev]
 		except KeyError:
@@ -181,13 +132,6 @@ if __name__ == '__main__':
 			delta = float(setting['packing_delta'])
 			gamma = 0.5 - delta # Lower bound on vote-share in district
 
-
-		# Increase resolution to make plot more accurate
-		resolution = setting.get('res', DEFAULT_RESOLUTION)
-
-		# # Range of vote-share values is slightly offset to avoid 
-		# # ambiguities of landing exactly on a threshold
-		# sSweep = np.linspace(0.101, n-0.099, resolution*n)
 
 		# Vote-shares for which to compute metric values
 		voteShares = setting['vote-shares']

@@ -2,9 +2,7 @@ import csv
 import os
 import math
 import numpy as np
-from pprint import pprint
 from scipy.special import factorial2
-import sys
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -345,7 +343,7 @@ def sainteLagueHelper(seatSharesPercent, voteSharesPercent):
 	nPartiesVotes = len(voteSharesPercent)
 
 	if nPartiesSeats != nPartiesVotes:
-		raise InputError('Length of seatSharesPercent is {0}, but length of voteSharesPercent is {1}.'.format(nPartiesSeats, nPartiesVotes))
+		raise Exception('Length of seatSharesPercent is {0}, but length of voteSharesPercent is {1}.'.format(nPartiesSeats, nPartiesVotes))
 
 	for i in range(nPartiesSeats):
 		diff = seatSharesPercent[i] - voteSharesPercent[i]
@@ -354,45 +352,94 @@ def sainteLagueHelper(seatSharesPercent, voteSharesPercent):
 	return total
 
 
-def calcPA(thresholds, n):
-	"""Computes the partisan asymmetry (PA) of the seats-votes curve
-	   f(v), as defined by the given thresholds (t_{n,0} through t_{n,n}). 
-	   Returns the area between f(v) and 1-f(1-v).
+def getPlanSeatsVotes(voteShares):
 	"""
-	total = 0
-	for j in range(1, n + 1):
-		total = total + abs(thresholds[j] - (n - thresholds[n - j + 1]))
+	Returns x and y coordinates of points defining the seats-votes curve 
+	of the district plan represented by the given fractional vote-shares. 
 
-	# total = total * 1. / (n**2)
-	total = total / n
-	total = total / n
-	return total
+	Parameter:
+	===============
+		voteShares - list of fractional vote-shares in each district
+
+	Returns:
+	===============
+		x - x-coordinates of plan seats-votes curve, scaled to the interval [0, 1]
+		y - y-coordinates of plan seats-votes curve, scaled to the interval [0, 1]
+	"""
+	vs = sorted(voteShares)
+	n = len(voteShares)
+
+	x = [0]
+	y = [0]
+
+	unique_vals, counts = np.unique(vs, return_counts=True)
+	
+	for index, val in enumerate(unique_vals):
+		if val < 0.5:
+			# Determine how much must be added to total vote-share to make these districts wins
+			diff = 0.5 - val
+			vs_hypothetical = [min(v + diff, 1.0) for v in vs]
+			x_hypothetical = sum(vs_hypothetical)
+			y_hypothetical_2 = sum(map(lambda v : v >= 0.5, vs_hypothetical))
+			y_hypothetical_1 = y_hypothetical_2 - counts[index]
+
+			x.append(x_hypothetical)
+			y.append(y_hypothetical_1)
+			x.append(x_hypothetical)
+			y.append(y_hypothetical_2)
+
+		if val >= 0.5:
+			# Determine how much must be removed from total vote-share to make these districts losses
+			diff = val - 0.5
+			vs_hypothetical = [max(v - diff, 0.0) for v in vs]
+			x_hypothetical = sum(vs_hypothetical)
+			y_hypothetical_2 = sum(map(lambda v : v >= 0.5, vs_hypothetical))
+			y_hypothetical_1 = y_hypothetical_2 - counts[index]
+
+			x.append(x_hypothetical)
+			y.append(y_hypothetical_1)
+			x.append(x_hypothetical)
+			y.append(y_hypothetical_2)
+	
+	x.append(n)
+	y.append(n)
+
+	x = sorted(x)
+	y = sorted(y)
+
+	# print(x)
+	# print(y)
+
+	return [xi / n for xi in x], [yi / n for yi in y]
 
 
-def calcPaUniformSwing(voteShares):
-	"""Computes the partisan asymmetry (PA) of the 
-	   district plan given as a list of Player 1's vote-shares. 
-
-	   The PA formula used is the area between 
-	   seats-votes curves for the two players under a 
-	   uniform swing assumption. Its value is between 0 and 1. 
-
-	   Arguments:
-	   voteShares - a list of district vote-shares (between 0 and 1)
+def calcPA(voteShares):
+	"""
+	Computes the partisan asymmetry (PA) of 
+	the seats-votes curve g(v) for the district plan 
+	represented by the given district vote-shares, each in [0, 1]. 
+	Returns the area between g(v) and 1-g(1-v). 
 	"""
 	n = len(voteShares)
-	# Sort the vote-shares descending
-	sortedVoteSharesDesc = np.sort(voteShares)[::-1]
+	x, y = getPlanSeatsVotes(voteShares)
+	flip_x = [1. - xi for xi in reversed(x)]
+	flip_y = [1. - yi for yi in reversed(y)]
 
-	# Compute thresholds for seats-votes curve
-	v = np.zeros(n)
-	for j in range(n):
-		vj = 0
-		for k in range(n):
-			vj += min(1, max(0, voteShares[k] - (voteShares[j] - 0.5)))
-		v[j] = vj * 1. / n
-	absTerms = np.subtract(np.add(v, np.flip(v)), np.ones(n))
-	return np.sum(np.absolute(absTerms)) / n
+	total = 0
+	denom = 2. * n
+
+	for i in range(1, 2 * n + 1):
+		index_x = 0
+		while y[index_x] < (i / denom):
+			index_x += 1
+		
+		index_flip_x = 0
+		while flip_y[index_flip_x] < (i / denom):
+			index_flip_x += 1
+
+		total += abs(x[index_x] - flip_x[index_flip_x])
+
+	return total / denom
 
 
 def calcCompet(voteShares, threshold=0.05):

@@ -40,65 +40,6 @@ def getProtocolSeatsVotes(n, protocolAbbrev):
 
     return x / n, y / n
 
-"""
-Returns x and y coordinates of points defining the seats-votes curve 
-of the district plan represented by the given fractional vote-shares. 
-
-Parameter:
-===============
-    voteShares - list of fractional vote-shares in each district
-
-Returns:
-===============
-    x - x-coordinates of plan seats-votes curve, scaled to the interval [0, 1]
-    y - y-coordinates of plan seats-votes curve, scaled to the interval [0, 1]
-"""
-def getPlanSeatsVotes(voteShares):
-    vs = sorted(voteShares)
-
-    x = [0]
-    y = [0]
-
-    unique_vals, counts = np.unique(vs, return_counts=True)
-    
-    for index, val in enumerate(unique_vals):
-        if val < 0.5:
-            # Determine how much must be added to total vote-share to make these districts wins
-            diff = 0.5 - val
-            vs_hypothetical = [min(v + diff, 1.0) for v in vs]
-            x_hypothetical = sum(vs_hypothetical)
-            y_hypothetical_2 = sum(map(lambda v : v >= 0.5, vs_hypothetical))
-            y_hypothetical_1 = y_hypothetical_2 - counts[index]
-
-            x.append(x_hypothetical)
-            y.append(y_hypothetical_1)
-            x.append(x_hypothetical)
-            y.append(y_hypothetical_2)
-
-        if val >= 0.5:
-            # Determine how much must be removed from total vote-share to make these districts losses
-            diff = val - 0.5
-            vs_hypothetical = [max(v - diff, 0.0) for v in vs]
-            x_hypothetical = sum(vs_hypothetical)
-            y_hypothetical_2 = sum(map(lambda v : v >= 0.5, vs_hypothetical))
-            y_hypothetical_1 = y_hypothetical_2 - counts[index]
-
-            x.append(x_hypothetical)
-            y.append(y_hypothetical_1)
-            x.append(x_hypothetical)
-            y.append(y_hypothetical_2)
-    
-    x.append(n)
-    y.append(n)
-
-    x = sorted(x)
-    y = sorted(y)
-
-    print(x)
-    print(y)
-
-    return [xi / n for xi in x], [yi / n for yi in y]
-
 
 
 if __name__ == '__main__':
@@ -118,17 +59,22 @@ if __name__ == '__main__':
     t, K = utils.getThresholds(protocol, n)
     voteShares = utils.getDistrictPlan(n, s1, 1, protocolAbbrev, t, K)
     
-    x_plan, y_plan = getPlanSeatsVotes(voteShares)
+    x_plan, y_plan = utils.getPlanSeatsVotes(voteShares)
+    x_plan_flip = [1. - xi for xi in reversed(x_plan)]
+    y_plan_flip = [1. - yi for yi in reversed(y_plan)]
 
     print('District vote-shares:')
     pprint(list(voteShares))
     print('District vote-shares, sorted:')
     pprint(sorted(voteShares))
 
+    print("Plan partisan asymmetry:", utils.calcPA(voteShares))
+
     plt.plot(x_protocol, y_protocol)
     plt.plot(x_plan, y_plan, '--')
+    plt.plot(x_plan_flip, y_plan_flip, '-*')
     plt.title('Seats-votes curves for protocol and district plan, N = {}'.format(n))
-    plt.legend(["{} Protocol".format(protocol['name']), "District Plan for s1 = {}".format(s1)])
+    plt.legend(["{} Protocol".format(protocol['name']), "District Plan for s1 = {}".format(s1), "Player 2 perspective"])
     plt.xlabel('Player 1 Vote-share')
     plt.ylabel('Player 1 Seat-share')
     plt.show()
