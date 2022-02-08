@@ -45,8 +45,6 @@ metrics = {
 		'name': 'Mean-Median Difference',
 		'fn': 'calcMeanMedian',
 		'units': '(%)',
-		'val_at_zero': 0.,
-		'val_at_n': 0.,
 		'yticks': [-50, -25, 0, 25, 50],
 		'ymin': -50,
 		'ymax': 50
@@ -55,9 +53,7 @@ metrics = {
 		'name': 'Partisan Asymmetry',
 		'fn': 'calcPA',
 		'units': None,
-		'val_at_zero': -0.5,
-		'val_at_n': 0.5,
-		'yticks': np.linspace(0, 0.5, 6),
+		'yticks': np.linspace(0, 0.50, 6),
 		'ymin': 0,
 		'ymax': 0.5
 	},
@@ -65,8 +61,6 @@ metrics = {
 		'name': 'Sainte-Laguë Index',
 		'fn': 'calcSainteLagueIndex',
 		'units': '(%)',
-		'val_at_zero': 0.0,
-		'val_at_n': 0.0,
 		'yticks': np.arange(0, 65, step=5),
 		'ymin': 0,
 		'ymax': 60
@@ -75,8 +69,6 @@ metrics = {
 		'name': 'Competitiveness',
 		'fn': 'calcCompet',
 		'units': '(No. Districts)',
-		'val_at_zero': 0,
-		'val_at_n': 0,
 		'yticks': lambda n: np.arange(0, (np.ceil(n / 5) + 1) * 5, step=5), 
 		'ymin': -2,
 		'ymax': lambda n: n
@@ -202,7 +194,7 @@ if __name__ == '__main__':
 			axarr[0].set_xticks(np.arange(0, 1.25, step=0.25))
 			for v_i in range(len(voteShares)):
 				axarr[1].plot(nSweep, metricVals[v_i, :], 'o')
-			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units'])
+			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units']) if metric['units'] else metric['name']
 			axarr[1].set(xlabel='Vote-share', ylabel=ylabelMetric)
 			yticks1 = metric['yticks']
 			if metricAbbrev == 'CP':
@@ -234,7 +226,7 @@ if __name__ == '__main__':
 			markers = ['o', 'x', '+', '^', 'd', '*', 's']
 			for v_i in range(len(voteShares)):
 				ax.plot(nSweep, metricVals[v_i, :], markers[v_i % len(markers)])
-			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units'])
+			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units']) if metric['units'] else metric['name']
 			ax.set(xlabel='No. Districts', ylabel=ylabelMetric)
 			yticks1 = metric['yticks']
 			if metricAbbrev == 'CP':
@@ -264,6 +256,5 @@ if __name__ == '__main__':
 
 		if setting['show_plot'] == 1:
 			plt.show()
-
 
 
