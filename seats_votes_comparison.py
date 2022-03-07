@@ -69,6 +69,8 @@ if __name__ == '__main__':
     pprint(sorted(voteShares))
 
     print("Plan partisan asymmetry:", utils.calcPA(voteShares))
+    print("Plan SL index:", utils.calcSainteLagueIndex(voteShares))
+    print("Plan efficiency gap:", utils.calcEfficiencyGap(voteShares))
 
     plt.plot(x_protocol, y_protocol)
     plt.plot(x_plan, y_plan, '--')
