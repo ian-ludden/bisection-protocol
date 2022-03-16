@@ -82,46 +82,6 @@ class DistrictPlan:
 
 # End of DistrictPlan class
 
-"""
-Enumerates the balanced, connected bipartitions of the given graph.
-
-NOTE: Only implemented for 4 nodes. 
-
-Parameters:
-===============
-    graph - a networkx Graph
-
-Returns:
-===============
-    a list of sets of nodes such that each set is one side of a bipartition
-
-"""
-def enumerate_bipartitions(graph):
-    if graph.number_of_nodes() != 4:
-        raise NotImplementedError("Only implemented for 4 nodes.")
-    
-    bipartitions = []
-    # if graph.number_of_nodes() % 2 == 1:
-    #     # No balanced bipartitions possible if odd number of nodes
-    #     return bipartitions
-    
-    nodes = sorted([node for node in graph.nodes])
-    candidate_node_sets = [[nodes[0], nodes[1]], [nodes[0], nodes[2]], [nodes[0], nodes[3]]] # All possible pairs that contain 1
-
-    # Check feasibility of each candidate bipartition, i.e., connectedness of each half
-    for candidate_node_set in candidate_node_sets:
-        other_set = set(nodes).difference(set(candidate_node_set))
-        if tuple(candidate_node_set) in graph.edges and tuple(other_set) in graph.edges:
-            bipartitions.append(set(candidate_node_set))
-    
-    # # More general implementation for more than 4 nodes:
-    # for this_half in candidate_node_sets:
-    #     other_half = list(set(nodes).difference(set(this_half)))
-    #     if nx.is_connected(nx.subgraph(graph, this_half)) and nx.is_connected(nx.subgraph(graph, other_half)):
-    #         bipartitions.append(set(this_half))
-    
-    return bipartitions
-
 
 """
 Enumerates all balanced (within 1 node) partitions of a graph into 
@@ -163,6 +123,7 @@ class BisectionInstance:
         self.plans = []
         self.num_rows = num_rows
         self.num_cols = num_cols
+        self.first_player = first_player
         
         if DEBUG:
             print("Voter grid (1 is D, 0 is R):")
@@ -231,6 +192,25 @@ class BisectionInstance:
         else:
             return 0
 
+    
+    """
+    Computes the first-player net vote-share 
+    in the given subset of nodes. 
+
+    Parameters:
+    ===========
+        nodeset - set of nodes (unit indices)
+    
+    Returns: 
+    ===========
+        votes for first player minus votes for second player
+    """
+    def vote_share(self, nodeset):
+        votes_d = sum([self.votes[node - 1] for node in nodeset])
+        votes_first_player = votes_d if self.first_player == "D" else len(nodeset) - votes_d
+        votes_second_player = len(nodeset) - votes_first_player
+        return votes_first_player - votes_second_player
+
 
     """
     Lists unique assignments of the given set of nodes (units)
@@ -280,12 +260,13 @@ class BisectionInstance:
     ===============
         nodeset - the set of nodes (units) in the piece to be bisected 
         current_player - "D", corresponding to 1s in self.votes, or "R", corresponding to 0s
+        verbose - if True, print best bisection found at this level (default False)
 
     Returns:
     ===============
         best_util - the highest possible first-player utility under optimal play
     """
-    def recursive_optimal_bisection(self, nodeset, current_player):
+    def recursive_optimal_bisection(self, nodeset, current_player, verbose=False):
         nodeset_str = nodeset_to_string(nodeset)
         if nodeset_str in self.memoized_utilities: 
             return self.memoized_utilities[nodeset_str]
@@ -308,6 +289,9 @@ class BisectionInstance:
             print("\nFound", len(unique_plans), "unique plans for full nodeset.")
 
         best_utility = -1 * (len(nodeset) // self.units_per_district)
+
+        best_side1 = None
+        best_side2 = None
 
         # Iterate over distinct plans (partitions) for the piece
         for plan_index, unique_plan in enumerate(unique_plans):
@@ -346,15 +330,15 @@ class BisectionInstance:
                 continue # Can't beat best utility seen so far, so skip this plan
 
             unique_bisections = enumerate_bisections(aux_graph)
-            
+
             # Iterate over distinct bisections of the piece that fit with the current plan
             for side1_tuple in unique_bisections:
                 side1 = set(side1_tuple)
                 nodeset1 = set([node for node in nodeset if unique_plan[node] in side1])
                 nodeset2 = nodeset.difference(nodeset1)
 
-                opponent_util1 = self.recursive_optimal_bisection(nodeset1, next_player)
-                opponent_util2 = self.recursive_optimal_bisection(nodeset2, next_player)
+                opponent_util1 = self.recursive_optimal_bisection(nodeset1, next_player, verbose=verbose)
+                opponent_util2 = self.recursive_optimal_bisection(nodeset2, next_player, verbose=verbose)
 
                 utility = -1 * (opponent_util1 + opponent_util2) # Negate, since zero-sum
                 if utility > best_utility:
@@ -363,11 +347,19 @@ class BisectionInstance:
                         print('New best utility at top level:', best_utility)
                         self.best_first_round_sides = [nodeset1, nodeset2]
                         self.best_plan = unique_plans[plan_index]
+
+                    if verbose:
+                        best_side1 = nodeset1
+                        best_side2 = nodeset2
                 
                     # Check utility bound
                     if best_utility >= max_utility:
                         break # Can't beat best utility seen so far, so continue on from this plan
 
+
+        if verbose:
+            for index, side in enumerate([best_side1, best_side2]):
+                print("Best side {}:\n\t{}\nvote-share:\t{}".format(index + 1, self.vote_share(side)))
 
         # Memoize best utility
         self.memoized_utilities[nodeset_to_string(nodeset)] = best_utility
@@ -405,9 +397,14 @@ if __name__ == '__main__':
     print('Elapsed time: {:.3f} seconds'.format(end - start))
     print()
 
-    # TODO: Recover sequence of optimal bisections
+    # Recover sequence of optimal bisections
     if bisection_instance.best_first_round_sides:
+        second_player = "D" if first_player == "R" else "R"
         pprint(bisection_instance.best_first_round_sides)
+        for index, side in enumerate(bisection_instance.best_first_round_sides):
+            print("Side", index + 1, "vote-share:", bisection_instance.vote_share(side))
+            bisection_instance.recursive_optimal_bisection(\
+                nodeset=side, current_player=second_player, verbose=True)
         
     if bisection_instance.best_plan:
         pprint(bisection_instance.best_plan)
