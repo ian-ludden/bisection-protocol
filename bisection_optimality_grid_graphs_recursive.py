@@ -9,7 +9,7 @@ from pprint import pprint
 import psutil
 import sys
 
-DEBUG = True
+DEBUG = False
 
 def nodeset_to_string(nodeset):
     return ",".join(sorted(str(node) for node in nodeset))
@@ -76,8 +76,13 @@ class DistrictPlan:
         #         index += 1
         #         str_rep += str(self.assignment[index])
         #     str_rep += "\n" # End row
-        str_rep += '\nFirst player, ' + self.first_player +', receives ' + str(self.p1_utility) + ' net utility from ' + str(self.wins_p1) + ' win(s), '\
-                + str(self.wins_p2) + ' loss(es), and ' + str(self.ties) + ' tie(s).\n'
+        
+        # str_rep += '\nFirst player, ' + self.first_player +', receives ' + str(self.p1_utility) + ' net utility from ' + str(self.wins_p1) + ' win(s), '\
+                # + str(self.wins_p2) + ' loss(es), and ' + str(self.ties) + ' tie(s).\n'
+
+        str_rep += "First player, " + self.first_player + ", receives net utility " + str(self.p1_utility) + "\n"
+        str_rep += str(self.wins_p1) + 'W, '\
+                    + str(self.ties) + 'T, ' + str(self.wins_p2) + 'L\n';
         return str_rep
 
 # End of DistrictPlan class
@@ -285,10 +290,10 @@ class BisectionInstance:
         if is_top_level:
             unique_plans.sort(key=lambda plan : plan.p1_utility, reverse=True)
 
-        if is_top_level:
+        if DEBUG and is_top_level:
             print("\nFound", len(unique_plans), "unique plans for full nodeset.")
 
-        best_utility = -1 * (len(nodeset) // self.units_per_district)
+        best_utility = -1 * (len(nodeset) // self.units_per_district) - 1 # One lower than worse-possible
 
         best_side1 = None
         best_side2 = None
@@ -341,17 +346,18 @@ class BisectionInstance:
                 opponent_util2 = self.recursive_optimal_bisection(nodeset2, next_player, verbose=verbose)
 
                 utility = -1 * (opponent_util1 + opponent_util2) # Negate, since zero-sum
+
                 if utility > best_utility:
                     best_utility = utility
                     if is_top_level:
-                        print('New best utility at top level:', best_utility)
                         self.best_first_round_sides = [nodeset1, nodeset2]
                         self.best_plan = unique_plans[plan_index]
+                        if DEBUG: print('New best utility at top level:', best_utility)
 
                     if verbose:
                         best_side1 = nodeset1
                         best_side2 = nodeset2
-                
+
                     # Check utility bound
                     if best_utility >= max_utility:
                         break # Can't beat best utility seen so far, so continue on from this plan
@@ -359,7 +365,7 @@ class BisectionInstance:
 
         if verbose:
             for index, side in enumerate([best_side1, best_side2]):
-                print("Best side {}:\n\t{}\nvote-share:\t{}".format(index + 1, self.vote_share(side)))
+                print("Best side {}:\n\t{}\nvote-share:\t{}".format(index + 1, side, self.vote_share(side)))
 
         # Memoize best utility
         self.memoized_utilities[nodeset_to_string(nodeset)] = best_utility
@@ -369,7 +375,7 @@ class BisectionInstance:
 
 if __name__ == '__main__':
     if len(sys.argv) < 5:
-        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs.py [partitions enumeration filename] [rows] [cols] [voter distribution filename] [first player (\'R\' or \'D\', optional with default \'D\')]')
+        exit('Not enough arguments. Usage: python bisection_feasibility_grid_graphs_recursive.py [partitions enumeration filename] [rows] [cols] [voter distribution filename] [first player (\'R\' or \'D\', optional with default \'D\')]')
 
     partition_filename = sys.argv[1]
     num_rows = int(sys.argv[2])
@@ -377,7 +383,7 @@ if __name__ == '__main__':
     voters_filename = sys.argv[4]
     
     now = datetime.now()
-    print('Start time:', now.strftime("%H:%M:%S"))
+    if DEBUG: print('Start time:', now.strftime("%H:%M:%S"))
     start = timer()
 
     if len(sys.argv) >= 6:
@@ -388,25 +394,29 @@ if __name__ == '__main__':
         bisection_instance = BisectionInstance(partition_filename, voters_filename, num_rows, num_cols)
 
     full_nodeset = set([i for i in range(1, num_rows * num_cols + 1)])
-    best_utility_first_player = bisection_instance.recursive_optimal_bisection(full_nodeset, first_player)
+    best_utility_first_player = bisection_instance.recursive_optimal_bisection(full_nodeset, first_player, verbose=False)
 
-    print("Best utility achieved by player", first_player, "when going first:", best_utility_first_player,'\n')    
+    if DEBUG: print("Best utility achieved by player", first_player, "when going first:", best_utility_first_player,'\n')    
     end = timer()
     now = datetime.now()
-    print('End time:', now.strftime("%H:%M:%S"))
+    if DEBUG: print('End time:', now.strftime("%H:%M:%S"))
     print('Elapsed time: {:.3f} seconds'.format(end - start))
-    print()
 
     # Recover sequence of optimal bisections
     if bisection_instance.best_first_round_sides:
         second_player = "D" if first_player == "R" else "R"
+        print("Best first-round sides:")
         pprint(bisection_instance.best_first_round_sides)
         for index, side in enumerate(bisection_instance.best_first_round_sides):
             print("Side", index + 1, "vote-share:", bisection_instance.vote_share(side))
+            # Remove side's nodeset from memoized utilities, and re-run with verbose=True
+            bisection_instance.memoized_utilities.pop(nodeset_to_string(side))
             bisection_instance.recursive_optimal_bisection(\
                 nodeset=side, current_player=second_player, verbose=True)
         
     if bisection_instance.best_plan:
         pprint(bisection_instance.best_plan)
-        pprint(bisection_instance.best_plan.assignment)
+        print(bisection_instance.best_plan.assignment)
+    
+    print()
 
