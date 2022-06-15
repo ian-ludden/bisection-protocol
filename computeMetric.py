@@ -1,7 +1,11 @@
 import json
+import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from pprint import pprint
+import seaborn as sns
+
 import sys
 
 import utils
@@ -16,6 +20,7 @@ import utils
 # See settings.json for examples of valid settings. 
 ######################################################################
 N_MAX = 150
+VERBOSE = True
 
 protocols = {
 	'B': {
@@ -39,7 +44,9 @@ metrics = {
 		'units': '(%)',
 		'yticks': [-50, -25, -15, -8, 0, 8, 15, 25, 50],
 		'ymin': -50,
-		'ymax': 50
+		'ymax': 50, 
+		'cmap': 'RdBu_r', 
+		'norm': colors.BoundaryNorm(boundaries=[-50, -25, -15, -8, -4, 4, 8, 15, 25, 50], ncolors=256)
 	},
 	'MM': {
 		'name': 'Mean-Median Difference',
@@ -55,7 +62,9 @@ metrics = {
 		'units': None,
 		'yticks': np.linspace(0, 0.50, 6),
 		'ymin': 0,
-		'ymax': 0.5
+		'ymax': 0.4, 
+		'cmap': 'Reds', 
+		'norm': colors.BoundaryNorm(boundaries=[0, 0.01, 0.02, 0.05, 0.10, 0.20, 0.40], ncolors=256)
 	},
 	'SL': {
 		'name': 'Sainte-Laguë Index',
@@ -63,7 +72,9 @@ metrics = {
 		'units': '(%)',
 		'yticks': np.arange(0, 65, step=5),
 		'ymin': 0,
-		'ymax': 60
+		'ymax': 100, 
+		'cmap': 'Greys', 
+		'norm': colors.BoundaryNorm(boundaries=[0, 1, 5, 10, 20, 100], ncolors=256)
 	},
 	'CP': {
 		'name': 'Competitiveness',
@@ -186,75 +197,48 @@ if __name__ == '__main__':
 		titleText = ''
 
 		if setting['show_seats-votes'] == 1:
-			fig, axarr = plt.subplots(nrows=2, sharex=True, figsize=(8,9))
-			fig.suptitle(titleText)
-			axarr[0].plot(xThresholds/n, yThresholds/n)
-			axarr[0].set(ylabel='Seat-share')
-			axarr[0].set_yticks(np.arange(0, 1.25, step=0.25))
-			axarr[0].set_xticks(np.arange(0, 1.25, step=0.25))
-			for v_i in range(len(voteShares)):
-				axarr[1].plot(nSweep, metricVals[v_i, :], 'o')
-			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units']) if metric['units'] else metric['name']
-			axarr[1].set(xlabel='Vote-share', ylabel=ylabelMetric)
-			yticks1 = metric['yticks']
-			if metricAbbrev == 'CP':
-				yticks1 = yticks1(n)
-			axarr[1].set_yticks(yticks1)
-			ymin = metric['ymin']
-			ymax = metric['ymax']
-			if metricAbbrev == 'CP':
-				ymax = ymax(n)
-			axarr[1].set_ylim(bottom=ymin, top=ymax)
-			axarr[1].set_xticks(np.arange(0, N_MAX + 5, step=N_MAX // 10))
-			axarr[0].grid()
-			axarr[1].grid()
-			axarr[0].set_xlim(0, 1)
-			axarr[1].set_xlim(0, N_MAX + 2)
-			lg = axarr[1].legend(['{:.1f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, loc='upper right', ncol=2)
-			lg.set_title("Player 1 Vote-Share", prop={'size': 16})
+			raise NotImplementedError("The show_seats-votes flag has been removed.")
+		
+		fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,6))
 
-			if metricAbbrev == 'EG':
-				axarr[1].fill_between(nSweep, -8, 8, alpha=0.15)
+		data_array = np.array(metricVals)
 
-			# Change font sizes
-			for ax in axarr:
-				for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + 
-							 ax.get_xticklabels() + ax.get_yticklabels()):
-					item.set_fontsize(16)
-		else:
-			fig, ax = plt.subplots(nrows=1, sharex=True, figsize=(8,6))
-			markers = ['o', 'x', '+', '^', 'd', '*', 's']
-			for v_i in range(len(voteShares)):
-				ax.plot(nSweep, metricVals[v_i, :], markers[v_i % len(markers)])
-			ylabelMetric = '{0} {1}'.format(metric['name'], metric['units']) if metric['units'] else metric['name']
-			ax.set(xlabel='No. Districts', ylabel=ylabelMetric)
-			yticks1 = metric['yticks']
-			if metricAbbrev == 'CP':
-				yticks1 = yticks1(n)
-			ax.set_yticks(yticks1)
-			ymin = metric['ymin']
-			ymax = metric['ymax']
-			if metricAbbrev == 'CP':
-				ymax = ymax(n)
-			ax.set_ylim(bottom=ymin, top=ymax)
-			ax.set_xticks(np.arange(0, N_MAX + 5, step=N_MAX // 10))
-			ax.grid()
-			lg = ax.legend(['{:.2f}%'.format(voteShare * 100.) for voteShare in voteShares], fontsize=16, loc='upper right', ncol=2)
-			lg.set_title("Player 1 Vote-Share", prop={'size': 16})
-			plt.xlim(0, N_MAX + 2)
-			plt.gcf().subplots_adjust(bottom=0.2)
+		# Add dummy zero column to shift xtick labels by 1 
+		# (1 to 150 districts, not 0 to 149)
+		blank_col = np.zeros((data_array.shape[0], 1))
+		data_array = np.hstack((blank_col, data_array))
 
-			if metricAbbrev == 'EG':
-				ax.fill_between([0, N_MAX + 5], -8, 8, alpha=0.15)
+		# Flip so vote-shares increase from bottom to top
+		np.flip(data_array, axis=0)
+		
+		# Compare observed min/max values to preset cutoffs
+		if VERBOSE:
+			print(', '.join([setting['name'], setting['protocol'], metricAbbrev]))
+			print('Chosen vmin/vmax:\t', metric['ymin'], metric['ymax'])
+			print('Data vmin/vmax:  \t', data_array.min(), data_array.max())
+			print()
 
-			for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + 
-						 ax.get_xticklabels() + ax.get_yticklabels()):
-				item.set_fontsize(16)
+		center_val = 0 if metricAbbrev == 'EG' else None
+
+		cmap_val = metric['cmap']
+		norm_val = metric['norm']
+
+		xtick_labels = 10 # Print district counts in increments of 10
+		ytick_labels = np.flip(voteShares)
+		ytick_labels = ['{:d}%'.format(round(100 * yt)) for yt in ytick_labels]
+
+		cbar_label = '{} {}'.format(metric['name'], metric['units'])
+		sns.heatmap(data_array, vmin=metric['ymin'], vmax=metric['ymax'], ax=ax,\
+			center=center_val, cmap=cmap_val,\
+			xticklabels=xtick_labels, yticklabels=ytick_labels,\
+			norm=norm_val,\
+			cbar_kws={'label': cbar_label})
 
 		if setting['save_plot'] == 1:
 			fig.savefig('{0}.pdf'.format(filename), bbox_inches='tight')
 
 		if setting['show_plot'] == 1:
+			plt.title(', '.join([setting['name'], setting['protocol'], metricAbbrev]))
 			plt.show()
 
 
