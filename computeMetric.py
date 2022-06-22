@@ -101,8 +101,9 @@ if __name__ == '__main__':
 	else:
 		settingName = None
 
-	# Set matplotlib font
+	# Adjust font settings
 	plt.rcParams['font.family'] = ['Arial', 'sans-serif']
+	plt.rcParams['font.size'] = 12
 
 	for setting in settings:
 		if settingName is not None and settingName != setting['name']:
