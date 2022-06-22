@@ -2,7 +2,6 @@ import json
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from pprint import pprint
 import seaborn as sns
 
@@ -21,6 +20,7 @@ import utils
 ######################################################################
 N_MAX = 150
 VERBOSE = True
+FIG_DIR = 'plots/'
 
 protocols = {
 	'B': {
@@ -74,7 +74,7 @@ metrics = {
 		'ymin': 0,
 		'ymax': 100, 
 		'cmap': 'Greys', 
-		'norm': colors.BoundaryNorm(boundaries=[0, 1, 5, 10, 20, 100], ncolors=256)
+		'norm': colors.BoundaryNorm(boundaries=[0, 0.5, 1, 2, 5, 25, 100], ncolors=256)
 	},
 	'CP': {
 		'name': 'Competitiveness',
@@ -100,6 +100,9 @@ if __name__ == '__main__':
 		settingName = str(sys.argv[2])
 	else:
 		settingName = None
+
+	# Set matplotlib font
+	plt.rcParams['font.family'] = ['Arial', 'sans-serif']
 
 	for setting in settings:
 		if settingName is not None and settingName != setting['name']:
@@ -227,15 +230,17 @@ if __name__ == '__main__':
 		ytick_labels = np.flip(voteShares)
 		ytick_labels = ['{:d}%'.format(int(100 * yt)) for yt in ytick_labels]
 
-		cbar_label = '{} {}'.format(metric['name'], metric['units'])
+		cbar_label = '{} {}'.format(metric['name'], metric['units'] if metric['units'] else '')
 		sns.heatmap(data_array, vmin=metric['ymin'], vmax=metric['ymax'], ax=ax,\
 			center=center_val, cmap=cmap_val,\
 			xticklabels=xtick_labels, yticklabels=ytick_labels,\
 			norm=norm_val,\
 			cbar_kws={'label': cbar_label})
+		plt.xlabel('No. Districts')
+		plt.ylabel('Player 1 Vote-share')
 
 		if setting['save_plot'] == 1:
-			fig.savefig('{0}.pdf'.format(filename), bbox_inches='tight')
+			fig.savefig('{0}{1}.pdf'.format(FIG_DIR, filename), bbox_inches='tight')
 
 		if setting['show_plot'] == 1:
 			plt.title(', '.join([setting['name'], setting['protocol'], metricAbbrev]))
