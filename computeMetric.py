@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
 		xtick_labels = 10 # Print district counts in increments of 10
 		ytick_labels = np.flip(voteShares)
-		ytick_labels = ['{:d}%'.format(round(100 * yt)) for yt in ytick_labels]
+		ytick_labels = ['{:d}%'.format(int(100 * yt)) for yt in ytick_labels]
 
 		cbar_label = '{} {}'.format(metric['name'], metric['units'])
 		sns.heatmap(data_array, vmin=metric['ymin'], vmax=metric['ymax'], ax=ax,\
